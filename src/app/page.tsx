@@ -1,12 +1,36 @@
-export default function Home() {
-  return (
-    <div className="flex flex-1 items-center justify-center min-h-screen bg-background">
-      <main className="text-center">
-        <h1 className="text-4xl font-bold text-primary mb-4">CluPay</h1>
-        <p className="text-text-secondary text-lg">
-          Payment platform for sports clubs in Chile
-        </p>
-      </main>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export default async function Home() {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) {
+    redirect("/register/complete");
+  }
+
+  const role = profile.role;
+
+  if (role === "super_admin") {
+    redirect("/admin");
+  }
+
+  if (role === "club_admin") {
+    redirect("/club");
+  }
+
+  redirect("/app");
 }
