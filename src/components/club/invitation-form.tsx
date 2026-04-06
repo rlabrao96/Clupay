@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { sendInvitation } from "@/lib/actions/send-invitation";
 
 interface InvitationFormProps {
   clubId: string;
 }
 
 export function InvitationForm({ clubId }: InvitationFormProps) {
-  const supabase = createClient();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
@@ -22,18 +21,13 @@ export function InvitationForm({ clubId }: InvitationFormProps) {
     setError(null);
     setSuccess(false);
 
-    if (!email.trim()) { setError("El email es obligatorio"); setSaving(false); return; }
+    const result = await sendInvitation(clubId, email);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Sesión expirada. Recarga la página."); setSaving(false); return; }
-
-    const { error: insertError } = await supabase.from("invitations").insert({
-      club_id: clubId,
-      invited_by: user.id,
-      email: email.trim(),
-    });
-
-    if (insertError) { setError(insertError.message); setSaving(false); return; }
+    if (!result.success) {
+      setError(result.error ?? "Error al enviar invitación");
+      setSaving(false);
+      return;
+    }
 
     setEmail("");
     setSuccess(true);
@@ -45,7 +39,7 @@ export function InvitationForm({ clubId }: InvitationFormProps) {
     <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4">
       <h3 className="text-sm font-semibold text-text mb-3">Enviar invitación</h3>
       {error && <p className="text-sm text-danger mb-2">{error}</p>}
-      {success && <p className="text-sm text-success mb-2">Invitación creada exitosamente</p>}
+      {success && <p className="text-sm text-success mb-2">Invitación enviada exitosamente</p>}
       <div className="flex gap-2">
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@ejemplo.cl"
           className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" required />
