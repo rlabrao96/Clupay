@@ -20,9 +20,10 @@ const navItems = [
 function ClubSidebar() {
   const pathname = usePathname();
   const [clubName, setClubName] = useState<string>("");
+  const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadClubName() {
+    async function loadClubInfo() {
       const supabase = createClient();
       const {
         data: { user },
@@ -31,25 +32,36 @@ function ClubSidebar() {
 
       const { data: clubAdmin } = await supabase
         .from("club_admins")
-        .select("club_id, clubs:club_id(name)")
+        .select("club_id, clubs:club_id(name, logo_url)")
         .eq("profile_id", user.id)
         .limit(1)
         .single();
 
       if (clubAdmin?.clubs) {
-        setClubName((clubAdmin.clubs as unknown as { name: string }).name);
+        const club = clubAdmin.clubs as unknown as { name: string; logo_url: string | null };
+        setClubName(club.name);
+        setClubLogo(club.logo_url);
       }
     }
-    loadClubName();
+    loadClubInfo();
   }, []);
 
   return (
     <aside className="w-64 min-h-screen flex flex-col border-r border-gray-100 bg-white">
       <div className="px-6 py-6 border-b border-gray-100">
-        <h1 className="text-xl font-bold text-primary">CluPay</h1>
-        <p className="text-xs text-text-secondary mt-0.5">
-          {clubName || "Club Admin"}
-        </p>
+        <div className="flex items-center gap-3">
+          {clubLogo ? (
+            <img src={clubLogo} alt="" className="w-8 h-8 rounded-lg object-contain" />
+          ) : (
+            <span className="text-xl font-bold text-primary">CluPay</span>
+          )}
+          <div className="min-w-0">
+            {clubLogo && <p className="text-xs font-semibold text-primary">CluPay</p>}
+            <p className="text-xs text-text-secondary truncate">
+              {clubName || "Club Admin"}
+            </p>
+          </div>
+        </div>
       </div>
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-1">
