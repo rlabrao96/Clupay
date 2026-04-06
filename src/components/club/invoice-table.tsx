@@ -179,28 +179,43 @@ function InvoiceRowGroup({
             {isLoading ? (
               <div className="py-4 text-center text-sm text-text-secondary">Cargando detalle...</div>
             ) : items && items.length > 0 ? (
-              <table className="w-full my-3">
-                <thead>
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deportista</th>
-                    <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deporte</th>
-                    <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Plan</th>
-                    <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Monto</th>
-                    <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Descuento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-200/50">
-                      <td className="px-4 py-2 text-xs text-text">{item.kidName}</td>
-                      <td className="px-4 py-2 text-xs text-text-secondary">{item.sportName}</td>
-                      <td className="px-4 py-2 text-xs text-text-secondary">{item.planName}</td>
-                      <td className="px-4 py-2 text-xs text-text text-right">{formatCLP(item.amount)}</td>
-                      <td className="px-4 py-2 text-xs text-text-secondary text-right">{item.discount_amount > 0 ? `-${formatCLP(item.discount_amount)}` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              (() => {
+                const subtotal = items.reduce((s, i) => s + i.amount, 0);
+                const totalDiscount = items.reduce((s, i) => s + i.discount_amount, 0);
+                const total = subtotal - totalDiscount;
+                return (
+                  <table className="w-full my-3">
+                    <thead>
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deportista</th>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deporte</th>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Plan</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Monto</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Descuento</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Neto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id} className="border-t border-gray-200/50">
+                          <td className="px-4 py-2 text-xs text-text">{item.kidName}</td>
+                          <td className="px-4 py-2 text-xs text-text-secondary">{item.sportName}</td>
+                          <td className="px-4 py-2 text-xs text-text-secondary">{item.planName}</td>
+                          <td className="px-4 py-2 text-xs text-text text-right">{formatCLP(item.amount)}</td>
+                          <td className="px-4 py-2 text-xs text-text-secondary text-right">{item.discount_amount > 0 ? `-${formatCLP(item.discount_amount)}` : "—"}</td>
+                          <td className="px-4 py-2 text-xs text-text text-right">{formatCLP(item.amount - item.discount_amount)}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-gray-300">
+                        <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-text text-right">Total</td>
+                        <td className="px-4 py-2 text-xs font-semibold text-text text-right">{formatCLP(subtotal)}</td>
+                        <td className="px-4 py-2 text-xs font-semibold text-text-secondary text-right">{totalDiscount > 0 ? `-${formatCLP(totalDiscount)}` : "—"}</td>
+                        <td className="px-4 py-2 text-xs font-bold text-text text-right">{formatCLP(total)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                );
+              })()
             ) : (
               <div className="py-4 text-center text-sm text-text-secondary">Sin detalle</div>
             )}
