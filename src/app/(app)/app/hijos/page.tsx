@@ -52,9 +52,14 @@ export default async function HijosPage() {
           <h1 className="text-2xl font-bold text-text">Mis Hijos</h1>
           <p className="text-text-secondary text-sm">{kidList.length} {kidList.length === 1 ? "hijo" : "hijos"}</p>
         </div>
-        <Link href="/app/hijos/nuevo" className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
-          + Agregar
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/app/inscribir" className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
+            Inscribir en deporte
+          </Link>
+          <Link href="/app/hijos/nuevo" className="px-4 py-2 border border-gray-200 text-text-secondary text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            + Agregar hijo
+          </Link>
+        </div>
       </div>
 
       {kidList.length === 0 ? (
