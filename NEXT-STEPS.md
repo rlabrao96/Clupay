@@ -10,7 +10,6 @@ No items currently in progress.
 
 ### Phase 1 — Core Loop (make the product work end-to-end)
 
-- **Invitation acceptance flow** — `/invite/[token]` page where parents accept club invitations, select sport/plan for their kid, and complete enrollment. Currently invitations are created in DB but there's no acceptance UI.
 - **Invoice generation engine** — Supabase Edge Function (cron) that runs monthly per club, generates one invoice per parent aggregating all kid enrollments, and applies active discounts.
 - **Email notifications via Resend** — Transactional emails for: payment reminders (3 days before), due date reminders, payment confirmations, overdue alerts (1/3/7 days), invitation emails, invoice/receipt PDF attachments.
 
@@ -39,7 +38,6 @@ No items currently in progress.
 - **Athlete filtering** — Spec calls for filterable table by sport/status on the athletes page.
 - **Payment methods in parent profile** — Spec calls for managing payment methods (cards). Not implemented.
 - **Notification preferences in parent profile** — Spec calls for notification settings. Not implemented.
-- **"Join new club" flow** — Parents can add kids but cannot enroll existing kids into new clubs/sports/plans.
 - **Reward messages** — On-time payment streak detection and congratulatory messages. Not implemented.
 
 ## Known Issues
