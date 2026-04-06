@@ -18,7 +18,7 @@ interface EnrollmentFormProps {
   clubName: string;
   sports: Sport[];
   plans: Plan[];
-  /** If provided, skip club_parents insert and invitation update */
+  /** If provided, also mark the invitation as accepted on first enrollment */
   invitationToken?: string;
   onFinish: () => void;
 }

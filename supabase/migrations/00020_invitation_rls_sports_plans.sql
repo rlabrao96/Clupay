@@ -52,4 +52,7 @@ CREATE POLICY "parent_plans_select_member" ON plans
 CREATE POLICY "parent_invitations_update" ON invitations
   FOR UPDATE USING (
     email = (SELECT email FROM profiles WHERE id = auth.uid())
+  )
+  WITH CHECK (
+    email = (SELECT email FROM profiles WHERE id = auth.uid())
   );

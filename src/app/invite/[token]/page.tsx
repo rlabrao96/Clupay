@@ -42,7 +42,7 @@ export default async function InvitePage({
 
   // Token expired or already used
   const isExpired = new Date(invitation.expires_at) < new Date();
-  const isUsed = invitation.status === "accepted";
+  const isUsed = invitation.status !== "pending";
 
   if (isExpired || isUsed) {
     return (
