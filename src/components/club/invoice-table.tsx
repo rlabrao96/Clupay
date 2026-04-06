@@ -91,12 +91,20 @@ export function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <table className="w-full">
+      <table className="w-full table-fixed">
+        <colgroup>
+          <col className="w-[25%]" />
+          <col className="w-[15%]" />
+          <col className="w-[15%]" />
+          <col className="w-[15%]" />
+          <col className="w-[15%]" />
+          <col className="w-[15%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-gray-100">
             <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Apoderado</th>
             <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Período</th>
-            <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Total</th>
+            <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary" colSpan={2}>Total</th>
             <th className="text-center px-6 py-4 text-sm font-medium text-text-secondary">Estado</th>
             <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Acciones</th>
           </tr>
@@ -158,7 +166,7 @@ function InvoiceRowGroup({
           </div>
         </td>
         <td className="px-6 py-4 text-sm text-text-secondary">{monthNames[invoice.period_month - 1]} {invoice.period_year}</td>
-        <td className="px-6 py-4 text-sm font-medium text-text text-right">{formatCLP(invoice.total)}</td>
+        <td className="px-6 py-4 text-sm font-medium text-text text-right" colSpan={2}>{formatCLP(invoice.total)}</td>
         <td className="px-6 py-4 text-center">
           <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[invoice.status]}`}>{statusLabel[invoice.status]}</span>
         </td>
@@ -173,7 +181,7 @@ function InvoiceRowGroup({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={5} className="bg-gray-50/80 px-6 py-0">
+          <td colSpan={6} className="bg-gray-50/80 px-0 py-0">
             {isLoading ? (
               <div className="py-4 text-center text-sm text-text-secondary">Cargando detalle...</div>
             ) : items && items.length > 0 ? (
@@ -182,33 +190,41 @@ function InvoiceRowGroup({
                 const totalDiscount = items.reduce((s, i) => s + i.discount_amount, 0);
                 const total = subtotal - totalDiscount;
                 return (
-                  <table className="w-full my-3">
+                  <table className="w-full table-fixed my-3">
+                    <colgroup>
+                      <col className="w-[25%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deportista</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Deporte</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary">Plan</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Monto</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Descuento</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary">Neto</th>
+                        <th className="text-left px-6 py-2 text-xs font-medium text-text-secondary">Deportista</th>
+                        <th className="text-left px-6 py-2 text-xs font-medium text-text-secondary">Deporte</th>
+                        <th className="text-left px-6 py-2 text-xs font-medium text-text-secondary">Plan</th>
+                        <th className="text-right px-6 py-2 text-xs font-medium text-text-secondary">Monto</th>
+                        <th className="text-right px-6 py-2 text-xs font-medium text-text-secondary">Descuento</th>
+                        <th className="text-right px-6 py-2 text-xs font-medium text-text-secondary">Neto</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item) => (
                         <tr key={item.id} className="border-t border-gray-200/50">
-                          <td className="px-4 py-2 text-xs text-text">{item.kidName}</td>
-                          <td className="px-4 py-2 text-xs text-text-secondary">{item.sportName}</td>
-                          <td className="px-4 py-2 text-xs text-text-secondary">{item.planName}</td>
-                          <td className="px-4 py-2 text-xs text-text text-right">{formatCLP(item.amount)}</td>
-                          <td className="px-4 py-2 text-xs text-text-secondary text-right">{item.discount_amount > 0 ? `-${formatCLP(item.discount_amount)}` : "—"}</td>
-                          <td className="px-4 py-2 text-xs text-text text-right">{formatCLP(item.amount - item.discount_amount)}</td>
+                          <td className="px-6 py-2 text-xs text-text">{item.kidName}</td>
+                          <td className="px-6 py-2 text-xs text-text-secondary">{item.sportName}</td>
+                          <td className="px-6 py-2 text-xs text-text-secondary">{item.planName}</td>
+                          <td className="px-6 py-2 text-xs text-text text-right">{formatCLP(item.amount)}</td>
+                          <td className="px-6 py-2 text-xs text-text-secondary text-right">{item.discount_amount > 0 ? `-${formatCLP(item.discount_amount)}` : "—"}</td>
+                          <td className="px-6 py-2 text-xs text-text text-right">{formatCLP(item.amount - item.discount_amount)}</td>
                         </tr>
                       ))}
                       <tr className="border-t border-gray-300">
-                        <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-text text-right">Total</td>
-                        <td className="px-4 py-2 text-xs font-semibold text-text text-right">{formatCLP(subtotal)}</td>
-                        <td className="px-4 py-2 text-xs font-semibold text-text-secondary text-right">{totalDiscount > 0 ? `-${formatCLP(totalDiscount)}` : "—"}</td>
-                        <td className="px-4 py-2 text-xs font-bold text-text text-right">{formatCLP(total)}</td>
+                        <td colSpan={3} className="px-6 py-2 text-xs font-semibold text-text text-right">Total</td>
+                        <td className="px-6 py-2 text-xs font-semibold text-text text-right">{formatCLP(subtotal)}</td>
+                        <td className="px-6 py-2 text-xs font-semibold text-text-secondary text-right">{totalDiscount > 0 ? `-${formatCLP(totalDiscount)}` : "—"}</td>
+                        <td className="px-6 py-2 text-xs font-bold text-text text-right">{formatCLP(total)}</td>
                       </tr>
                     </tbody>
                   </table>
