@@ -100,6 +100,7 @@ export interface Plan {
   description: string | null;
   price: number;
   frequency: string;
+  max_slots: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

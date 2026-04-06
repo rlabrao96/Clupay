@@ -22,6 +22,7 @@ export function PlanForm({ sports, plan, onCancel, hideSportSelect }: PlanFormPr
   const [description, setDescription] = useState(plan?.description ?? "");
   const [price, setPrice] = useState(plan?.price ?? 0);
   const [frequency, setFrequency] = useState(plan?.frequency ?? "");
+  const [maxSlots, setMaxSlots] = useState<number | "">(plan?.max_slots ?? "");
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export function PlanForm({ sports, plan, onCancel, hideSportSelect }: PlanFormPr
       description: description.trim() || null,
       price,
       frequency: frequency.trim(),
+      max_slots: maxSlots === "" ? null : Number(maxSlots),
       is_active: isActive,
     };
 
@@ -78,10 +80,14 @@ export function PlanForm({ sports, plan, onCancel, hideSportSelect }: PlanFormPr
           <input id="planFreq" type="text" value={frequency} onChange={(e) => setFrequency(e.target.value)} className={inputClass} placeholder="ej: 3x/semana" required />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label htmlFor="planPrice" className="block text-sm font-medium text-text mb-1">Precio (CLP) *</label>
           <input id="planPrice" type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value))} className={inputClass} required />
+        </div>
+        <div>
+          <label htmlFor="planMaxSlots" className="block text-sm font-medium text-text mb-1">Máx. inscritos</label>
+          <input id="planMaxSlots" type="number" min={1} value={maxSlots} onChange={(e) => setMaxSlots(e.target.value === "" ? "" : Number(e.target.value))} className={inputClass} placeholder="Sin límite" />
         </div>
         <div>
           <label htmlFor="planDesc" className="block text-sm font-medium text-text mb-1">Descripción</label>

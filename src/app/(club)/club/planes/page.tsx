@@ -244,7 +244,11 @@ export default function DeportesYPlanesPage() {
                             <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
                             <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
                             <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
-                            <td className="px-6 py-4 text-sm text-text-secondary text-center">{count}</td>
+                            <td className="px-6 py-4 text-sm text-center">
+                              <span className={plan.max_slots && count >= plan.max_slots ? "text-danger font-medium" : "text-text-secondary"}>
+                                {count}{plan.max_slots ? `/${plan.max_slots}` : ""}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 text-sm text-text font-medium text-right">{formatCLP(plan.price * count)}</td>
                             <td className="px-6 py-4 text-center">
                               <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
