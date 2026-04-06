@@ -1,0 +1,11 @@
+CREATE TYPE user_role AS ENUM ('super_admin', 'club_admin', 'parent');
+CREATE TYPE enrollment_status AS ENUM ('active', 'paused', 'cancelled');
+CREATE TYPE invoice_status AS ENUM ('generated', 'pending', 'paid', 'overdue');
+CREATE TYPE payment_method AS ENUM ('card_automatic', 'card_link', 'bank_transfer');
+CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
+CREATE TYPE discount_type AS ENUM ('percentage', 'fixed_amount');
+CREATE TYPE discount_duration AS ENUM ('one_time', 'n_months', 'until_removed');
+CREATE TYPE notification_channel AS ENUM ('email', 'whatsapp');
+CREATE TYPE notification_type AS ENUM ('reminder', 'confirmation', 'overdue', 'reward_message', 'invitation', 'invoice_pdf', 'receipt_pdf');
+CREATE TYPE notification_status AS ENUM ('scheduled', 'sent', 'failed');
+CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'expired');
