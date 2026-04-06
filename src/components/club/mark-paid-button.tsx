@@ -17,14 +17,16 @@ export function MarkPaidButton({ invoiceId, amount }: MarkPaidButtonProps) {
   async function handleMarkPaid() {
     if (!confirm("¿Marcar esta factura como pagada por transferencia bancaria?")) return;
     setSaving(true);
-    await supabase.from("payments").insert({
-      invoice_id: invoiceId,
-      method: "bank_transfer",
-      amount,
-      status: "completed",
-      paid_at: new Date().toISOString(),
+    const { error } = await supabase.rpc("mark_invoice_paid", {
+      p_invoice_id: invoiceId,
+      p_amount: amount,
+      p_method: "bank_transfer",
     });
-    await supabase.from("invoices").update({ status: "paid" }).eq("id", invoiceId);
+    if (error) {
+      alert(error.message);
+      setSaving(false);
+      return;
+    }
     router.refresh();
   }
 
