@@ -8,10 +8,6 @@ No items currently in progress.
 
 ## Pending
 
-### Phase 1 — Core Loop (make the product work end-to-end)
-
-~~**Email notifications via Resend** — COMPLETE. Implemented invitation emails, invoice-ready notifications, payment confirmations, payment reminders (3 days before due), and overdue alerts (1/3/7 days after due) using Resend + server actions + daily cron job.~~
-
 ### Phase 2 — Money Flows
 
 - **Flow.cl payment integration** — Card payments (automatic recurring + one-time links), bank transfer tracking, webhook handlers for payment status updates. The "Pagar Ahora" button in the parent dashboard is currently a non-functional placeholder.
@@ -20,9 +16,8 @@ No items currently in progress.
 
 ### Phase 3 — Polish & Robustness
 
-- **Mark-as-paid atomicity** — `mark-paid-button.tsx` inserts payment and updates invoice in two separate calls. Wrap in a Supabase RPC/transaction to prevent desync.
+- **Invoice generation atomicity** — `invoice-generation.ts` inserts invoice and items in two separate calls. Wrap in a Supabase RPC/transaction to prevent desync.
 - **Plans query security** — `planes/page.tsx` fetches all plans then filters by club_id client-side, potentially exposing other clubs' data. Filter in the database query instead.
-- **Non-null assertion guards** — `invitation-form.tsx` and `discount-form.tsx` use `user!.id` without checking if the session expired. Add null checks with user-facing error messages.
 - **Error handling on delete operations** — Sports, plans, and discount delete/deactivate operations don't check for errors. FK constraint failures show no user feedback.
 - **Discount form kid picker** — When a parent has multiple kids, the form auto-selects the first one. Add a dropdown to choose which kid gets the discount.
 - **Duplicate status badge configs** — Dashboard and payments pages define similar but different status maps. Extract to `src/lib/invoice-status.ts`.
@@ -47,8 +42,8 @@ No pending items detected.
 
 - Set up GitHub Actions CI pipeline (lint, type-check, test on PR)
 - Configure Supabase CLI for migration management
-- Set up Resend API key and email templates
 - Set up Flow.cl API credentials and webhook endpoints
+- Remove unused `resend` package from dependencies (`npm uninstall resend`)
 
 ## Future Ideas
 
@@ -61,3 +56,4 @@ _From the product spec (v2+):_
 - Multi-currency / multi-language support
 - Automated discount rules
 - Payment plan / installment support
+- Custom email domain (replace Gmail SMTP with Resend or similar once domain is available)
