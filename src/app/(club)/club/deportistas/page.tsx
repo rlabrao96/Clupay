@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getClubForUser } from "@/lib/club";
+import { formatCLP } from "@/lib/format";
 import type { EnrollmentStatus } from "@/types";
 
 const statusBadge: Record<EnrollmentStatus, string> = {
@@ -19,6 +20,7 @@ interface Enrollment {
   id: string;
   sport: string;
   plan: string;
+  price: number;
   status: EnrollmentStatus;
 }
 
@@ -28,6 +30,7 @@ interface KidRow {
   parentName: string;
   parentEmail: string;
   enrollments: Enrollment[];
+  monthlyTotal: number;
 }
 
 export default async function DeportistasPage() {
@@ -38,7 +41,7 @@ export default async function DeportistasPage() {
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select(
-      "id, status, kid_id, kids:kid_id(name, last_names, parent_id, profiles:parent_id(name, last_names, email)), sports:sport_id(name), plans:plan_id(name)"
+      "id, status, kid_id, kids:kid_id(name, last_names, parent_id, profiles:parent_id(name, last_names, email)), sports:sport_id(name), plans:plan_id(name, price)"
     )
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
@@ -46,6 +49,7 @@ export default async function DeportistasPage() {
   const kidsMap = new Map<string, KidRow>();
   for (const e of (enrollments ?? []) as any[]) {
     const kidId = e.kid_id as string;
+    const price = e.plans?.price ?? 0;
     if (!kidsMap.has(kidId)) {
       kidsMap.set(kidId, {
         kidId,
@@ -53,14 +57,20 @@ export default async function DeportistasPage() {
         parentName: `${e.kids?.profiles?.name ?? ""} ${e.kids?.profiles?.last_names ?? ""}`.trim(),
         parentEmail: e.kids?.profiles?.email ?? "—",
         enrollments: [],
+        monthlyTotal: 0,
       });
     }
-    kidsMap.get(kidId)!.enrollments.push({
+    const kid = kidsMap.get(kidId)!;
+    kid.enrollments.push({
       id: e.id,
       sport: e.sports?.name ?? "—",
       plan: e.plans?.name ?? "—",
+      price,
       status: e.status as EnrollmentStatus,
     });
+    if (e.status === "active") {
+      kid.monthlyTotal += price;
+    }
   }
 
   const kids = Array.from(kidsMap.values());
@@ -83,11 +93,12 @@ export default async function DeportistasPage() {
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Apoderado</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Email</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Inscripciones</th>
+              <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Total mensual</th>
             </tr>
           </thead>
           <tbody>
             {kids.length === 0 ? (
-              <tr><td colSpan={4} className="px-6 py-12 text-center text-text-secondary">No hay deportistas inscritos</td></tr>
+              <tr><td colSpan={5} className="px-6 py-12 text-center text-text-secondary">No hay deportistas inscritos</td></tr>
             ) : (
               kids.map((kid) => (
                 <tr key={kid.kidId} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors align-top">
@@ -106,6 +117,7 @@ export default async function DeportistasPage() {
                       ))}
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-sm font-medium text-text text-right">{formatCLP(kid.monthlyTotal)}</td>
                 </tr>
               ))
             )}
