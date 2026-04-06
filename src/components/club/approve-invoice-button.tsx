@@ -15,10 +15,15 @@ export function ApproveInvoiceButton({ invoiceId }: ApproveInvoiceButtonProps) {
 
   async function handleApprove() {
     setSaving(true);
-    await supabase
+    const { error } = await supabase
       .from("invoices")
       .update({ status: "pending" })
       .eq("id", invoiceId);
+    if (error) {
+      alert("Error al aprobar la factura");
+      setSaving(false);
+      return;
+    }
     router.refresh();
   }
 

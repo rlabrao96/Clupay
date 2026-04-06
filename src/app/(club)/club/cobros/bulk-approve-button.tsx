@@ -16,10 +16,15 @@ export function BulkApproveButton({ invoiceIds }: BulkApproveButtonProps) {
   async function handleBulkApprove() {
     if (!confirm(`¿Aprobar ${invoiceIds.length} facturas?`)) return;
     setSaving(true);
-    await supabase
+    const { error } = await supabase
       .from("invoices")
       .update({ status: "pending" })
       .in("id", invoiceIds);
+    if (error) {
+      alert("Error al aprobar las facturas");
+      setSaving(false);
+      return;
+    }
     router.refresh();
   }
 

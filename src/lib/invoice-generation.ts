@@ -171,8 +171,9 @@ async function generateParentInvoice(
     .or(`kid_id.in.(${kidIds.join(",")}),parent_id.eq.${parentId}`);
 
   const discountRows = (discounts ?? []) as DiscountRow[];
-  const kidDiscounts = discountRows.filter((d) => d.kid_id !== null);
-  const parentDiscounts = discountRows.filter((d) => d.parent_id !== null);
+  // Mutually exclusive: kid discounts have kid_id only, parent discounts have parent_id only
+  const kidDiscounts = discountRows.filter((d) => d.kid_id !== null && d.parent_id === null);
+  const parentDiscounts = discountRows.filter((d) => d.parent_id !== null && d.kid_id === null);
 
   // Build invoice items with kid-level discounts
   const items: Array<{
@@ -215,18 +216,21 @@ async function generateParentInvoice(
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
   const kidDiscountTotal = items.reduce((sum, item) => sum + item.discount_amount, 0);
 
-  // Apply parent-level discounts to the remaining total
+  // Apply parent-level discounts sequentially to the remaining total
   let parentDiscountTotal = 0;
-  const remaining = subtotal - kidDiscountTotal;
+  let remaining = subtotal - kidDiscountTotal;
 
   for (const discount of parentDiscounts) {
+    if (remaining <= 0) break;
+    let amount = 0;
     if (discount.type === "percentage") {
-      parentDiscountTotal += Math.floor((remaining * Number(discount.value)) / 100);
+      amount = Math.floor((remaining * Number(discount.value)) / 100);
     } else {
-      parentDiscountTotal += Math.min(Number(discount.value), remaining);
+      amount = Math.min(Number(discount.value), remaining);
     }
+    parentDiscountTotal += amount;
+    remaining -= amount;
   }
-  parentDiscountTotal = Math.min(parentDiscountTotal, remaining);
 
   const discountTotal = kidDiscountTotal + parentDiscountTotal;
   const total = Math.max(subtotal - discountTotal, 0);
@@ -242,7 +246,9 @@ async function generateParentInvoice(
   // Determine initial status
   const status = club.auto_approve_invoices ? "pending" : "generated";
 
-  // Insert invoice
+  // Insert invoice + items (not atomic — Supabase JS lacks transaction support.
+  // If items insert fails, orphaned invoice is caught by idempotency on re-run.
+  // TODO: wrap in RPC for atomicity when needed.)
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .insert({
