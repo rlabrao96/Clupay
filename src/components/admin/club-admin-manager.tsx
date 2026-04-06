@@ -93,7 +93,8 @@ export function ClubAdminManager({ clubId }: ClubAdminManagerProps) {
   }
 
   async function handleRemove(adminId: string) {
-    await supabase.from("club_admins").delete().eq("id", adminId);
+    const { error } = await supabase.from("club_admins").delete().eq("id", adminId);
+    if (error) { alert(`Error al quitar administrador: ${error.message}`); return; }
     loadAdmins();
   }
 

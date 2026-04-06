@@ -28,7 +28,8 @@ export default function DeportesPage() {
 
   async function handleDelete(sportId: string) {
     if (!confirm("¿Eliminar este deporte? Se eliminarán también sus planes asociados.")) return;
-    await supabase.from("sports").delete().eq("id", sportId);
+    const { error } = await supabase.from("sports").delete().eq("id", sportId);
+    if (error) { alert(`Error al eliminar: ${error.message}`); return; }
     loadData();
   }
 

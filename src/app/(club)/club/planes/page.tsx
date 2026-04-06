@@ -39,7 +39,8 @@ export default function PlanesPage() {
 
   async function handleDelete(planId: string) {
     if (!confirm("¿Eliminar este plan?")) return;
-    await supabase.from("plans").delete().eq("id", planId);
+    const { error } = await supabase.from("plans").delete().eq("id", planId);
+    if (error) { alert(`Error al eliminar: ${error.message}`); return; }
     loadData();
   }
 

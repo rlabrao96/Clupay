@@ -62,7 +62,8 @@ export default function DescuentosPage() {
 
   async function handleDeactivate(discountId: string) {
     if (!confirm("¿Desactivar este descuento?")) return;
-    await supabase.from("discounts").update({ is_active: false }).eq("id", discountId);
+    const { error } = await supabase.from("discounts").update({ is_active: false }).eq("id", discountId);
+    if (error) { alert(`Error al desactivar: ${error.message}`); return; }
     loadData();
   }
 
