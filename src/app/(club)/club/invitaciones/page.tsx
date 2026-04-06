@@ -42,7 +42,14 @@ export default async function InvitacionesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[30%]" />
+            <col className="w-[15%]" />
+            <col className="w-[15%]" />
+            <col className="w-[15%]" />
+            <col className="w-[25%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Email</th>

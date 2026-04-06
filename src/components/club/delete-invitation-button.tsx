@@ -23,7 +23,7 @@ export function DeleteInvitationButton({ invitationId }: { invitationId: string 
 
   if (confirming) {
     return (
-      <span className="inline-flex items-center gap-2">
+      <span className="inline-flex items-center gap-2 whitespace-nowrap">
         <span className="text-xs text-text-secondary">¿Eliminar?</span>
         <button
           onClick={handleDelete}
