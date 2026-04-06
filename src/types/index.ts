@@ -81,3 +81,94 @@ export interface PlatformBillingRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface Sport {
+  id: string;
+  club_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Plan {
+  id: string;
+  sport_id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  frequency: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Kid {
+  id: string;
+  parent_id: string;
+  name: string;
+  last_names: string;
+  rut: string;
+  date_of_birth: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  parent_id: string;
+  club_id: string;
+  period_month: number;
+  period_year: number;
+  subtotal: number;
+  discount_total: number;
+  total: number;
+  due_date: string;
+  status: InvoiceStatus;
+  pdf_url: string | null;
+  receipt_pdf_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  kid_id: string;
+  sport_id: string;
+  plan_id: string;
+  amount: number;
+  discount_amount: number;
+  created_at: string;
+}
+
+export interface Discount {
+  id: string;
+  club_id: string;
+  assigned_by: string;
+  kid_id: string | null;
+  parent_id: string | null;
+  type: DiscountType;
+  value: number;
+  duration: DiscountDuration;
+  remaining_months: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Invitation {
+  id: string;
+  club_id: string;
+  invited_by: string;
+  email: string | null;
+  phone: string | null;
+  token: string;
+  status: "pending" | "accepted" | "expired";
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export type NotificationStatus = "scheduled" | "sent" | "failed";
+export type InvitationStatus = "pending" | "accepted" | "expired";
