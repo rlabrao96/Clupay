@@ -61,7 +61,7 @@ export async function generateInvoices(
 
   if (clubsError) throw new Error(`Failed to fetch clubs: ${clubsError.message}`);
   if (!clubs || clubs.length === 0) {
-    return { overdue_marked: overdueMarked, clubs_processed: 0, invoices_generated: 0, invoices_skipped: 0 };
+    return { overdue_marked: overdueMarked, clubs_processed: 0, invoices_generated: 0, invoices_skipped: 0, auto_approved_invoice_ids: [] };
   }
 
   let totalGenerated = 0;
