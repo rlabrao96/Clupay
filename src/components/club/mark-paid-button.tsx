@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { markInvoicePaid } from "@/lib/actions/mark-invoice-paid";
 
 interface MarkPaidButtonProps {
   invoiceId: string;
@@ -10,20 +10,15 @@ interface MarkPaidButtonProps {
 }
 
 export function MarkPaidButton({ invoiceId, amount }: MarkPaidButtonProps) {
-  const supabase = createClient();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
   async function handleMarkPaid() {
     if (!confirm("¿Marcar esta factura como pagada por transferencia bancaria?")) return;
     setSaving(true);
-    const { error } = await supabase.rpc("mark_invoice_paid", {
-      p_invoice_id: invoiceId,
-      p_amount: amount,
-      p_method: "bank_transfer",
-    });
-    if (error) {
-      alert(error.message);
+    const result = await markInvoicePaid(invoiceId, amount);
+    if (!result.success) {
+      alert(result.error ?? "Error al marcar como pagado");
       setSaving(false);
       return;
     }
