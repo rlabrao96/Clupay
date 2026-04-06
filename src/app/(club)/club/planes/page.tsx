@@ -230,9 +230,9 @@ export default function DeportesYPlanesPage() {
                       <tr className="border-t border-gray-100">
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Plan</th>
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Frecuencia</th>
+                        <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Capacidad</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Inscritos</th>
-                        <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Capacidad</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Est. mensual</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Estado</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Acciones</th>
@@ -246,9 +246,9 @@ export default function DeportesYPlanesPage() {
                           <tr key={plan.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
                             <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
                             <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
+                            <td className="px-6 py-4 text-sm text-text-secondary text-center">{plan.max_slots ?? "—"}</td>
                             <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
                             <td className={`px-6 py-4 text-sm text-center ${isFull ? "text-danger font-medium" : "text-text-secondary"}`}>{count}</td>
-                            <td className="px-6 py-4 text-sm text-text-secondary text-center">{plan.max_slots ?? "—"}</td>
                             <td className="px-6 py-4 text-sm text-text font-medium text-right">{formatCLP(plan.price * count)}</td>
                             <td className="px-6 py-4 text-center">
                               <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
