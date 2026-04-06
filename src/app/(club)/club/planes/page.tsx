@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/format";
 import { PlanForm } from "@/components/club/plan-form";
@@ -17,6 +17,29 @@ export default function PlanesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | undefined>(undefined);
+  const [collapsedSports, setCollapsedSports] = useState<Set<string>>(new Set());
+
+  const plansBySport = useMemo(() => {
+    const grouped = new Map<string, { sportName: string; plans: PlanWithSport[] }>();
+    for (const plan of plans) {
+      const sportName = plan.sports?.name ?? "Sin deporte";
+      const sportId = plan.sport_id;
+      if (!grouped.has(sportId)) {
+        grouped.set(sportId, { sportName, plans: [] });
+      }
+      grouped.get(sportId)!.plans.push(plan);
+    }
+    return grouped;
+  }, [plans]);
+
+  function toggleSport(sportId: string) {
+    setCollapsedSports((prev) => {
+      const next = new Set(prev);
+      if (next.has(sportId)) next.delete(sportId);
+      else next.add(sportId);
+      return next;
+    });
+  }
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -74,43 +97,73 @@ export default function PlanesPage() {
         <div className="mb-6"><PlanForm sports={sports} plan={editingPlan} onCancel={handleCancel} /></div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Deporte</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Plan</th>
-              <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Precio</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Frecuencia</th>
-              <th className="text-center px-6 py-4 text-sm font-medium text-text-secondary">Estado</th>
-              <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-text-secondary">No hay planes registrados</td></tr>
-            ) : (
-              plans.map((plan) => (
-                <tr key={plan.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 text-sm text-text-secondary">{plan.sports?.name ?? "—"}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
-                  <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
-                      {plan.is_active ? "Activo" : "Inactivo"}
+      {plans.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 px-6 py-12 text-center text-text-secondary">
+          No hay planes registrados
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Array.from(plansBySport.entries()).map(([sportId, { sportName, plans: sportPlans }]) => {
+            const isCollapsed = collapsedSports.has(sportId);
+            return (
+              <div key={sportId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <button
+                  onClick={() => toggleSport(sportId)}
+                  className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className={`w-4 h-4 text-text-secondary transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <h2 className="text-base font-semibold text-text">{sportName}</h2>
+                    <span className="text-xs text-text-secondary bg-gray-100 px-2 py-0.5 rounded-full">
+                      {sportPlans.length} {sportPlans.length === 1 ? "plan" : "planes"}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-3">
-                    <button onClick={() => { setEditingPlan(plan); setShowForm(true); }} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
-                    <button onClick={() => handleDelete(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </button>
+
+                {!isCollapsed && (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-t border-gray-100">
+                        <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Plan</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Frecuencia</th>
+                        <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Estado</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sportPlans.map((plan) => (
+                        <tr key={plan.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
+                          <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
+                          <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
+                              {plan.is_active ? "Activo" : "Inactivo"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right space-x-3">
+                            <button onClick={() => { setEditingPlan(plan); setShowForm(true); }} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
+                            <button onClick={() => handleDelete(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
