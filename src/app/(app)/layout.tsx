@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/components/shared/auth-guard";
 import { LogoutButton } from "@/components/shared/logout-button";
 
@@ -7,6 +10,7 @@ const navItems = [
   {
     href: "/app",
     label: "Inicio",
+    exact: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -17,6 +21,7 @@ const navItems = [
   {
     href: "/app/pagos",
     label: "Pagos",
+    exact: false,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="20" height="14" x="2" y="5" rx="2" />
@@ -27,6 +32,7 @@ const navItems = [
   {
     href: "/app/hijos",
     label: "Hijos",
+    exact: false,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -39,6 +45,7 @@ const navItems = [
   {
     href: "/app/perfil",
     label: "Perfil",
+    exact: false,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="8" r="4" />
@@ -49,19 +56,29 @@ const navItems = [
 ];
 
 function BottomNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50">
       <div className="max-w-lg mx-auto flex">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-gray-500 hover:text-blue-500 transition-colors"
-          >
-            {item.icon}
-            <span className="text-xs font-medium">{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+                isActive ? "text-primary" : "text-gray-400"
+              }`}
+            >
+              {item.icon}
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
@@ -70,10 +87,10 @@ function BottomNav() {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard requiredRole="parent">
-      <div className="min-h-screen pb-20" style={{ backgroundColor: "#F0F7FF" }}>
+      <div className="min-h-screen pb-20 bg-background">
         <div className="max-w-lg mx-auto">
           <header className="flex items-center justify-between px-4 pt-4">
-            <h1 className="text-lg font-bold" style={{ color: "#3B82F6" }}>CluPay</h1>
+            <h1 className="text-lg font-bold text-primary">CluPay</h1>
             <LogoutButton />
           </header>
           <main className="px-4 py-4">{children}</main>
