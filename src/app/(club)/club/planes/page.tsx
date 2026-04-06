@@ -4,30 +4,35 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/format";
 import { PlanForm } from "@/components/club/plan-form";
+import { SportForm } from "@/components/club/sport-form";
 import type { Plan, Sport } from "@/types";
 
 interface PlanWithSport extends Plan {
   sports: { name: string; club_id: string };
 }
 
-export default function PlanesPage() {
+export default function DeportesYPlanesPage() {
   const supabase = createClient();
+  const [clubId, setClubId] = useState<string | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [plans, setPlans] = useState<PlanWithSport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<Plan | undefined>(undefined);
   const [collapsedSports, setCollapsedSports] = useState<Set<string>>(new Set());
 
+  // Sport form state
+  const [showSportForm, setShowSportForm] = useState(false);
+  const [editingSport, setEditingSport] = useState<Sport | undefined>(undefined);
+
+  // Plan form state — tracks which sport the form is for
+  const [planFormSportId, setPlanFormSportId] = useState<string | null>(null);
+  const [editingPlan, setEditingPlan] = useState<Plan | undefined>(undefined);
+
   const plansBySport = useMemo(() => {
-    const grouped = new Map<string, { sportName: string; plans: PlanWithSport[] }>();
+    const grouped = new Map<string, PlanWithSport[]>();
     for (const plan of plans) {
-      const sportName = plan.sports?.name ?? "Sin deporte";
       const sportId = plan.sport_id;
-      if (!grouped.has(sportId)) {
-        grouped.set(sportId, { sportName, plans: [] });
-      }
-      grouped.get(sportId)!.plans.push(plan);
+      if (!grouped.has(sportId)) grouped.set(sportId, []);
+      grouped.get(sportId)!.push(plan);
     }
     return grouped;
   }, [plans]);
@@ -46,11 +51,11 @@ export default function PlanesPage() {
     if (!user) return;
     const { data: clubAdmin } = await supabase.from("club_admins").select("club_id").eq("profile_id", user.id).limit(1).single();
     if (!clubAdmin) return;
-    const clubId = clubAdmin.club_id;
+    setClubId(clubAdmin.club_id);
 
     const [sportsRes, plansRes] = await Promise.all([
-      supabase.from("sports").select("*").eq("club_id", clubId).order("name"),
-      supabase.from("plans").select("*, sports:sport_id!inner(name, club_id)").eq("sports.club_id", clubId).order("name"),
+      supabase.from("sports").select("*").eq("club_id", clubAdmin.club_id).order("name"),
+      supabase.from("plans").select("*, sports:sport_id!inner(name, club_id)").eq("sports.club_id", clubAdmin.club_id).order("name"),
     ]);
 
     setSports((sportsRes.data as Sport[]) ?? []);
@@ -60,60 +65,96 @@ export default function PlanesPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  async function handleDelete(planId: string) {
+  async function handleDeleteSport(sportId: string) {
+    const sportPlans = plansBySport.get(sportId);
+    const msg = sportPlans?.length
+      ? `¿Eliminar este deporte y sus ${sportPlans.length} plan(es) asociados?`
+      : "¿Eliminar este deporte?";
+    if (!confirm(msg)) return;
+    const { error } = await supabase.from("sports").delete().eq("id", sportId);
+    if (error) { alert(`Error al eliminar: ${error.message}`); return; }
+    loadData();
+  }
+
+  async function handleDeletePlan(planId: string) {
     if (!confirm("¿Eliminar este plan?")) return;
     const { error } = await supabase.from("plans").delete().eq("id", planId);
     if (error) { alert(`Error al eliminar: ${error.message}`); return; }
     loadData();
   }
 
-  function handleCancel() { setShowForm(false); setEditingPlan(undefined); loadData(); }
+  function handleSportFormCancel() { setShowSportForm(false); setEditingSport(undefined); loadData(); }
+  function handlePlanFormCancel() { setPlanFormSportId(null); setEditingPlan(undefined); loadData(); }
+
+  function openAddPlan(sportId: string) {
+    setEditingPlan(undefined);
+    setPlanFormSportId(sportId);
+    // Make sure the sport section is expanded
+    setCollapsedSports((prev) => {
+      const next = new Set(prev);
+      next.delete(sportId);
+      return next;
+    });
+  }
+
+  function openEditPlan(plan: Plan) {
+    setEditingPlan(plan);
+    setPlanFormSportId(plan.sport_id);
+  }
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
+  const totalPlans = plans.length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-text mb-1">Planes</h1>
-          <p className="text-text-secondary">{plans.length} {plans.length === 1 ? "plan" : "planes"}</p>
+          <h1 className="text-2xl font-bold text-text mb-1">Deportes y Planes</h1>
+          <p className="text-text-secondary">
+            {sports.length} {sports.length === 1 ? "deporte" : "deportes"} · {totalPlans} {totalPlans === 1 ? "plan" : "planes"}
+          </p>
         </div>
-        {!showForm && sports.length > 0 && (
-          <button onClick={() => { setEditingPlan(undefined); setShowForm(true); }} className="px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
-            + Nuevo Plan
+        {!showSportForm && (
+          <button
+            onClick={() => { setEditingSport(undefined); setShowSportForm(true); }}
+            className="px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            + Nuevo Deporte
           </button>
         )}
       </div>
 
-      {sports.length === 0 && (
-        <div className="bg-warning-light text-warning text-sm px-4 py-3 rounded-lg mb-6">
-          Primero debes crear al menos un deporte antes de agregar planes.
+      {showSportForm && clubId && (
+        <div className="mb-6">
+          <SportForm clubId={clubId} sport={editingSport} onCancel={handleSportFormCancel} />
         </div>
       )}
 
-      {showForm && (
-        <div className="mb-6"><PlanForm sports={sports} plan={editingPlan} onCancel={handleCancel} /></div>
-      )}
-
-      {plans.length === 0 ? (
+      {sports.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 px-6 py-12 text-center text-text-secondary">
-          No hay planes registrados
+          No hay deportes registrados. Crea uno para empezar a agregar planes.
         </div>
       ) : (
         <div className="space-y-4">
-          {Array.from(plansBySport.entries()).map(([sportId, { sportName, plans: sportPlans }]) => {
-            const isCollapsed = collapsedSports.has(sportId);
+          {sports.map((sport) => {
+            const sportPlans = plansBySport.get(sport.id) ?? [];
+            const isCollapsed = collapsedSports.has(sport.id);
+            const isAddingPlanHere = planFormSportId === sport.id && !editingPlan;
+            const isEditingPlanHere = planFormSportId === sport.id && !!editingPlan;
+
             return (
-              <div key={sportId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <button
-                  onClick={() => toggleSport(sportId)}
-                  className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
+              <div key={sport.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                {/* Sport header */}
+                <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                  <button
+                    onClick={() => toggleSport(sport.id)}
+                    className="flex items-center gap-3 min-w-0"
+                  >
                     <svg
-                      className={`w-4 h-4 text-text-secondary transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+                      className={`w-4 h-4 text-text-secondary transition-transform shrink-0 ${isCollapsed ? "" : "rotate-90"}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -121,14 +162,50 @@ export default function PlanesPage() {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                    <h2 className="text-base font-semibold text-text">{sportName}</h2>
-                    <span className="text-xs text-text-secondary bg-gray-100 px-2 py-0.5 rounded-full">
+                    <h2 className="text-base font-semibold text-text">{sport.name}</h2>
+                    {sport.description && (
+                      <span className="text-xs text-text-secondary truncate hidden sm:inline">— {sport.description}</span>
+                    )}
+                    <span className="text-xs text-text-secondary bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
                       {sportPlans.length} {sportPlans.length === 1 ? "plan" : "planes"}
                     </span>
-                  </div>
-                </button>
+                  </button>
 
-                {!isCollapsed && (
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <button
+                      onClick={() => openAddPlan(sport.id)}
+                      className="text-xs text-primary hover:text-primary-dark font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                    >
+                      + Plan
+                    </button>
+                    <button
+                      onClick={() => { setEditingSport(sport); setShowSportForm(true); }}
+                      className="text-xs text-text-secondary hover:text-primary font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSport(sport.id)}
+                      className="text-xs text-text-secondary hover:text-danger font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Plan form (add/edit) — shown inside the sport card */}
+                {!isCollapsed && (isAddingPlanHere || isEditingPlanHere) && (
+                  <div className="px-6 pb-4">
+                    <PlanForm
+                      sports={[sport]}
+                      plan={editingPlan}
+                      onCancel={handlePlanFormCancel}
+                    />
+                  </div>
+                )}
+
+                {/* Plans table */}
+                {!isCollapsed && sportPlans.length > 0 && (
                   <table className="w-full">
                     <thead>
                       <tr className="border-t border-gray-100">
@@ -151,13 +228,23 @@ export default function PlanesPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right space-x-3">
-                            <button onClick={() => { setEditingPlan(plan); setShowForm(true); }} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
-                            <button onClick={() => handleDelete(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
+                            <button onClick={() => openEditPlan(plan)} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
+                            <button onClick={() => handleDeletePlan(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                )}
+
+                {/* Empty state for sport with no plans */}
+                {!isCollapsed && sportPlans.length === 0 && !isAddingPlanHere && (
+                  <div className="border-t border-gray-100 px-6 py-6 text-center text-sm text-text-secondary">
+                    Sin planes.{" "}
+                    <button onClick={() => openAddPlan(sport.id)} className="text-primary hover:text-primary-dark font-medium">
+                      Agregar uno
+                    </button>
+                  </div>
                 )}
               </div>
             );

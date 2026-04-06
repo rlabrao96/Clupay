@@ -10,8 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 const navItems = [
   { href: "/club", label: "Dashboard", exact: true },
   { href: "/club/deportistas", label: "Deportistas", exact: false },
-  { href: "/club/deportes", label: "Deportes", exact: false },
-  { href: "/club/planes", label: "Planes", exact: false },
+  { href: "/club/planes", label: "Deportes y Planes", exact: false },
   { href: "/club/cobros", label: "Cobros", exact: false },
   { href: "/club/invitaciones", label: "Invitaciones", exact: false },
   { href: "/club/descuentos", label: "Descuentos", exact: false },
