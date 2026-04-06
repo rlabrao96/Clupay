@@ -2,24 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { approveInvoice } from "@/lib/actions/approve-invoice";
 
 interface ApproveInvoiceButtonProps {
   invoiceId: string;
 }
 
 export function ApproveInvoiceButton({ invoiceId }: ApproveInvoiceButtonProps) {
-  const supabase = createClient();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
   async function handleApprove() {
     setSaving(true);
-    const { error } = await supabase
-      .from("invoices")
-      .update({ status: "pending" })
-      .eq("id", invoiceId);
-    if (error) {
+    const result = await approveInvoice(invoiceId);
+    if (!result.success) {
       alert("Error al aprobar la factura");
       setSaving(false);
       return;
