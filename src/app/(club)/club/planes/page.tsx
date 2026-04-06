@@ -27,14 +27,11 @@ export default function PlanesPage() {
 
     const [sportsRes, plansRes] = await Promise.all([
       supabase.from("sports").select("*").eq("club_id", clubId).order("name"),
-      supabase.from("plans").select("*, sports:sport_id(name, club_id)").order("name"),
+      supabase.from("plans").select("*, sports:sport_id!inner(name, club_id)").eq("sports.club_id", clubId).order("name"),
     ]);
 
     setSports((sportsRes.data as Sport[]) ?? []);
-    const clubPlans = ((plansRes.data ?? []) as PlanWithSport[]).filter(
-      (p) => p.sports?.club_id === clubId
-    );
-    setPlans(clubPlans);
+    setPlans((plansRes.data ?? []) as PlanWithSport[]);
     setLoading(false);
   }
 
