@@ -1,10 +1,12 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 CREATE TABLE invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
   invited_by UUID NOT NULL REFERENCES profiles(id),
   email TEXT,
   phone TEXT,
-  token TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token TEXT NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   status invitation_status NOT NULL DEFAULT 'pending',
   accepted_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '30 days'),
