@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getClubForUser } from "@/lib/club";
 import { formatDate } from "@/lib/format";
 import { InvitationForm } from "@/components/club/invitation-form";
+import { DeleteInvitationButton } from "@/components/club/delete-invitation-button";
 
 const statusBadge: Record<string, string> = {
   pending: "bg-warning-light text-warning",
@@ -48,11 +49,12 @@ export default async function InvitacionesPage() {
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Fecha envío</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Expira</th>
               <th className="text-center px-6 py-4 text-sm font-medium text-text-secondary">Estado</th>
+              <th className="text-right px-6 py-4 text-sm font-medium text-text-secondary">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={4} className="px-6 py-12 text-center text-text-secondary">No hay invitaciones enviadas</td></tr>
+              <tr><td colSpan={5} className="px-6 py-12 text-center text-text-secondary">No hay invitaciones enviadas</td></tr>
             ) : (
               rows.map((inv) => (
                 <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
@@ -63,6 +65,9 @@ export default async function InvitacionesPage() {
                     <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[inv.status] ?? "bg-gray-100 text-gray-500"}`}>
                       {statusLabel[inv.status] ?? inv.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <DeleteInvitationButton invitationId={inv.id} />
                   </td>
                 </tr>
               ))
