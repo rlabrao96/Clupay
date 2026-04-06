@@ -16,6 +16,7 @@ export default function DeportesYPlanesPage() {
   const [clubId, setClubId] = useState<string | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [plans, setPlans] = useState<PlanWithSport[]>([]);
+  const [enrollmentCounts, setEnrollmentCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [collapsedSports, setCollapsedSports] = useState<Set<string>>(new Set());
 
@@ -53,13 +54,20 @@ export default function DeportesYPlanesPage() {
     if (!clubAdmin) return;
     setClubId(clubAdmin.club_id);
 
-    const [sportsRes, plansRes] = await Promise.all([
+    const [sportsRes, plansRes, enrollRes] = await Promise.all([
       supabase.from("sports").select("*").eq("club_id", clubAdmin.club_id).order("name"),
       supabase.from("plans").select("*, sports:sport_id!inner(name, club_id)").eq("sports.club_id", clubAdmin.club_id).order("name"),
+      supabase.from("enrollments").select("plan_id").eq("club_id", clubAdmin.club_id).eq("status", "active"),
     ]);
+
+    const counts = new Map<string, number>();
+    for (const e of (enrollRes.data ?? []) as { plan_id: string }[]) {
+      counts.set(e.plan_id, (counts.get(e.plan_id) ?? 0) + 1);
+    }
 
     setSports((sportsRes.data as Sport[]) ?? []);
     setPlans((plansRes.data ?? []) as PlanWithSport[]);
+    setEnrollmentCounts(counts);
     setLoading(false);
   }
 
@@ -209,17 +217,19 @@ export default function DeportesYPlanesPage() {
                 {!isCollapsed && sportPlans.length > 0 && (
                   <table className="w-full table-fixed">
                     <colgroup>
-                      <col className="w-[35%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[20%]" />
+                      <col className="w-[28%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[14%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[24%]" />
                     </colgroup>
                     <thead>
                       <tr className="border-t border-gray-100">
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Plan</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Frecuencia</th>
+                        <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Inscritos</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Estado</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Acciones</th>
                       </tr>
@@ -230,6 +240,7 @@ export default function DeportesYPlanesPage() {
                           <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
                           <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
                           <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
+                          <td className="px-6 py-4 text-sm text-text-secondary text-center">{enrollmentCounts.get(plan.id) ?? 0}</td>
                           <td className="px-6 py-4 text-center">
                             <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
                               {plan.is_active ? "Activo" : "Inactivo"}
