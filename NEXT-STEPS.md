@@ -10,7 +10,6 @@ No items currently in progress.
 
 ### Phase 1 — Core Loop (make the product work end-to-end)
 
-- **Invoice generation engine** — Supabase Edge Function (cron) that runs monthly per club, generates one invoice per parent aggregating all kid enrollments, and applies active discounts.
 - **Email notifications via Resend** — Transactional emails for: payment reminders (3 days before), due date reminders, payment confirmations, overdue alerts (1/3/7 days), invitation emails, invoice/receipt PDF attachments.
 
 ### Phase 2 — Money Flows
