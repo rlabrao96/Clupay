@@ -17,6 +17,8 @@ export function ClubConfigForm({ club }: ClubConfigFormProps) {
   const [contactEmail, setContactEmail] = useState(club.contact_email ?? "");
   const [contactPhone, setContactPhone] = useState(club.contact_phone ?? "");
   const [billingDay, setBillingDay] = useState(club.billing_day);
+  const [dueDay, setDueDay] = useState(club.due_day);
+  const [autoApprove, setAutoApprove] = useState(club.auto_approve_invoices);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -34,6 +36,8 @@ export function ClubConfigForm({ club }: ClubConfigFormProps) {
       contact_email: contactEmail.trim() || null,
       contact_phone: contactPhone.trim() || null,
       billing_day: billingDay,
+      due_day: dueDay,
+      auto_approve_invoices: autoApprove,
     }).eq("id", club.id);
 
     if (updateError) { setError(updateError.message); setSaving(false); return; }
@@ -62,9 +66,27 @@ export function ClubConfigForm({ club }: ClubConfigFormProps) {
         <label htmlFor="clubPhone" className={labelClass}>Teléfono de contacto</label>
         <input id="clubPhone" type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} placeholder="+56 9 1234 5678" />
       </div>
-      <div>
-        <label htmlFor="clubBilling" className={labelClass}>Día de facturación (1-28)</label>
-        <input id="clubBilling" type="number" min={1} max={28} value={billingDay} onChange={(e) => setBillingDay(Number(e.target.value))} className={inputClass} />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="clubBilling" className={labelClass}>Día de facturación (1-28)</label>
+          <input id="clubBilling" type="number" min={1} max={28} value={billingDay} onChange={(e) => setBillingDay(Number(e.target.value))} className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor="clubDueDay" className={labelClass}>Día de vencimiento (1-28)</label>
+          <input id="clubDueDay" type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} className={inputClass} />
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          id="autoApprove"
+          type="checkbox"
+          checked={autoApprove}
+          onChange={(e) => setAutoApprove(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/20"
+        />
+        <label htmlFor="autoApprove" className="text-sm text-text">
+          Aprobar facturas automáticamente
+        </label>
       </div>
       <button type="submit" disabled={saving} className="px-6 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
         {saving ? "Guardando..." : "Guardar configuración"}
