@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { InvitationClient } from "./invitation-client";
 import type { Sport, Plan } from "@/types";
 
@@ -8,7 +8,8 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = await createServerSupabaseClient();
+  // Use service role to look up invitation by token — the token itself is the auth
+  const supabase = createServiceRoleClient();
 
   // Fetch invitation with club info
   const { data: invitation } = await supabase
