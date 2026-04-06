@@ -25,10 +25,11 @@ export function InvitationForm({ clubId }: InvitationFormProps) {
     if (!email.trim()) { setError("El email es obligatorio"); setSaving(false); return; }
 
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Sesión expirada. Recarga la página."); setSaving(false); return; }
 
     const { error: insertError } = await supabase.from("invitations").insert({
       club_id: clubId,
-      invited_by: user!.id,
+      invited_by: user.id,
       email: email.trim(),
     });
 

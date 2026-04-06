@@ -54,10 +54,11 @@ export function DiscountForm({ clubId, onCancel }: DiscountFormProps) {
     setError(null);
 
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Sesión expirada. Recarga la página."); setSaving(false); return; }
 
     const { error: insertError } = await supabase.from("discounts").insert({
       club_id: clubId,
-      assigned_by: user!.id,
+      assigned_by: user.id,
       kid_id: targetType === "kid" ? targetId : null,
       parent_id: targetType === "parent" ? targetId : null,
       type: discountType,
