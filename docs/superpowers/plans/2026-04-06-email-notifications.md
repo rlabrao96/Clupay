@@ -60,7 +60,7 @@ RESEND_FROM_EMAIL=CluPay <onboarding@resend.dev>
 Add to `.env.local`:
 
 ```
-RESEND_API_KEY=re_7WyEZWSM_MwqmNMdtcqiM3NM9EEov87Rw
+RESEND_API_KEY=<your_resend_api_key>
 RESEND_FROM_EMAIL=CluPay <onboarding@resend.dev>
 ```
 
