@@ -45,6 +45,8 @@ export interface Club {
   billing_day: number;
   platform_fee_fixed: number;
   platform_fee_percent: number;
+  due_day: number;
+  auto_approve_invoices: boolean;
   created_at: string;
   updated_at: string;
 }
