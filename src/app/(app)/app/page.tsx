@@ -14,8 +14,13 @@ export default async function AppHomePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch unpaid invoices, kids count, and kid IDs for enrollment count
-  const [invoicesRes, kidsRes] = await Promise.all([
+  // Fetch profile, unpaid invoices, kids count, and kid IDs for enrollment count
+  const [profileRes, invoicesRes, kidsRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", user.id)
+      .single(),
     supabase
       .from("invoices")
       .select("*, clubs:club_id(name)")
@@ -28,6 +33,7 @@ export default async function AppHomePage() {
       .eq("parent_id", user.id),
   ]);
 
+  const parentName = profileRes.data?.name ?? "";
   const unpaidInvoices = invoicesRes.data ?? [];
   const kidList = kidsRes.data ?? [];
   const totalKids = kidList.length;
@@ -55,7 +61,7 @@ export default async function AppHomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text">Hola</h1>
+        <h1 className="text-2xl font-bold text-text">Hola{parentName ? `, ${parentName}` : ""}</h1>
         <p className="text-text-secondary">Resumen de tus pagos</p>
       </div>
 
