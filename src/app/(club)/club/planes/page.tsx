@@ -217,41 +217,47 @@ export default function DeportesYPlanesPage() {
                 {!isCollapsed && sportPlans.length > 0 && (
                   <table className="w-full table-fixed">
                     <colgroup>
-                      <col className="w-[28%]" />
+                      <col className="w-[22%]" />
                       <col className="w-[12%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[9%]" />
                       <col className="w-[14%]" />
                       <col className="w-[10%]" />
-                      <col className="w-[12%]" />
-                      <col className="w-[24%]" />
+                      <col className="w-[22%]" />
                     </colgroup>
                     <thead>
                       <tr className="border-t border-gray-100">
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Plan</th>
-                        <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Frecuencia</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Inscritos</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Est. mensual</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Estado</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sportPlans.map((plan) => (
-                        <tr key={plan.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
-                          <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
-                          <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
-                          <td className="px-6 py-4 text-sm text-text-secondary text-center">{enrollmentCounts.get(plan.id) ?? 0}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
-                              {plan.is_active ? "Activo" : "Inactivo"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right space-x-3">
-                            <button onClick={() => openEditPlan(plan)} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
-                            <button onClick={() => handleDeletePlan(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
-                          </td>
-                        </tr>
-                      ))}
+                      {sportPlans.map((plan) => {
+                        const count = enrollmentCounts.get(plan.id) ?? 0;
+                        return (
+                          <tr key={plan.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
+                            <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
+                            <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
+                            <td className="px-6 py-4 text-sm text-text-secondary text-center">{count}</td>
+                            <td className="px-6 py-4 text-sm text-text font-medium text-right">{formatCLP(plan.price * count)}</td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
+                                {plan.is_active ? "Activo" : "Inactivo"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-3">
+                              <button onClick={() => openEditPlan(plan)} className="text-sm text-primary hover:text-primary-dark font-medium">Editar</button>
+                              <button onClick={() => handleDeletePlan(plan.id)} className="text-sm text-danger hover:text-danger/80 font-medium">Eliminar</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
