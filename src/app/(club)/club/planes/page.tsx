@@ -217,13 +217,14 @@ export default function DeportesYPlanesPage() {
                 {!isCollapsed && sportPlans.length > 0 && (
                   <table className="w-full table-fixed">
                     <colgroup>
-                      <col className="w-[22%]" />
-                      <col className="w-[12%]" />
+                      <col className="w-[20%]" />
                       <col className="w-[11%]" />
-                      <col className="w-[9%]" />
-                      <col className="w-[14%]" />
                       <col className="w-[10%]" />
-                      <col className="w-[22%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[21%]" />
                     </colgroup>
                     <thead>
                       <tr className="border-t border-gray-100">
@@ -231,6 +232,7 @@ export default function DeportesYPlanesPage() {
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Frecuencia</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Precio</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Inscritos</th>
+                        <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Capacidad</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Est. mensual</th>
                         <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary">Estado</th>
                         <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary">Acciones</th>
@@ -239,16 +241,14 @@ export default function DeportesYPlanesPage() {
                     <tbody>
                       {sportPlans.map((plan) => {
                         const count = enrollmentCounts.get(plan.id) ?? 0;
+                        const isFull = plan.max_slots != null && count >= plan.max_slots;
                         return (
                           <tr key={plan.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
                             <td className="px-6 py-4 text-sm font-medium text-text">{plan.name}</td>
                             <td className="px-6 py-4 text-sm text-text-secondary">{plan.frequency}</td>
                             <td className="px-6 py-4 text-sm text-text text-right">{formatCLP(plan.price)}</td>
-                            <td className="px-6 py-4 text-sm text-center">
-                              <span className={plan.max_slots && count >= plan.max_slots ? "text-danger font-medium" : "text-text-secondary"}>
-                                {count}{plan.max_slots ? `/${plan.max_slots}` : ""}
-                              </span>
-                            </td>
+                            <td className={`px-6 py-4 text-sm text-center ${isFull ? "text-danger font-medium" : "text-text-secondary"}`}>{count}</td>
+                            <td className="px-6 py-4 text-sm text-text-secondary text-center">{plan.max_slots ?? "—"}</td>
                             <td className="px-6 py-4 text-sm text-text font-medium text-right">{formatCLP(plan.price * count)}</td>
                             <td className="px-6 py-4 text-center">
                               <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${plan.is_active ? "bg-success-light text-success" : "bg-gray-100 text-gray-500"}`}>
