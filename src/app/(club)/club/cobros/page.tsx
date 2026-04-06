@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getClubForUser } from "@/lib/club";
 import { formatCLP } from "@/lib/format";
 import { MarkPaidButton } from "@/components/club/mark-paid-button";
+import { ApproveInvoiceButton } from "@/components/club/approve-invoice-button";
+import { BulkApproveButton } from "./bulk-approve-button";
 import type { InvoiceStatus } from "@/types";
 
 const monthNames = [
@@ -47,6 +49,9 @@ export default async function CobrosPage() {
   const collected = currentInvoices.filter((r) => r.status === "paid").reduce((sum, r) => sum + r.total, 0);
   const pending = currentInvoices.filter((r) => r.status !== "paid").reduce((sum, r) => sum + r.total, 0);
 
+  const generatedInvoices = rows.filter((r) => r.status === "generated");
+  const hasGenerated = generatedInvoices.length > 0;
+
   return (
     <div>
       <div className="mb-8">
@@ -68,6 +73,15 @@ export default async function CobrosPage() {
           <p className="text-3xl font-bold text-warning">{formatCLP(pending)}</p>
         </div>
       </div>
+
+      {hasGenerated && (
+        <div className="mb-4 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+          <p className="text-sm text-text-secondary">
+            {generatedInvoices.length} {generatedInvoices.length === 1 ? "factura pendiente de aprobación" : "facturas pendientes de aprobación"}
+          </p>
+          <BulkApproveButton invoiceIds={generatedInvoices.map((i) => i.id)} />
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <table className="w-full">
@@ -98,7 +112,10 @@ export default async function CobrosPage() {
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[status]}`}>{statusLabel[status]}</span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right space-x-3">
+                      {status === "generated" && (
+                        <ApproveInvoiceButton invoiceId={invoice.id} />
+                      )}
                       {(status === "pending" || status === "overdue") && (
                         <MarkPaidButton invoiceId={invoice.id} amount={invoice.total} />
                       )}
