@@ -1,36 +1,62 @@
-import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+"use client";
 
-export default async function Home() {
-  const supabase = await createServerSupabaseClient();
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function Home() {
+  const router = useRouter();
+  const supabase = createClient();
 
-  if (!user) {
-    redirect("/login");
-  }
+  useEffect(() => {
+    async function redirect() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-  if (!profile) {
-    redirect("/register/complete");
-  }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-  const role = profile.role;
+      if (!profile) {
+        router.push("/register");
+        return;
+      }
 
-  if (role === "super_admin") {
-    redirect("/admin");
-  }
+      switch (profile.role) {
+        case "super_admin":
+          router.push("/admin");
+          break;
+        case "club_admin":
+          router.push("/club");
+          break;
+        case "parent":
+          router.push("/app");
+          break;
+        default:
+          router.push("/login");
+      }
+    }
 
-  if (role === "club_admin") {
-    redirect("/club");
-  }
+    redirect();
+  }, [router, supabase]);
 
-  redirect("/app");
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen"
+      style={{ backgroundColor: "#F0F7FF" }}
+    >
+      <div
+        className="animate-spin rounded-full h-8 w-8 border-b-2"
+        style={{ borderColor: "#3B82F6" }}
+      />
+    </div>
+  );
 }
