@@ -139,32 +139,30 @@ function InvoiceRowGroup({
 }) {
   return (
     <>
-      <tr className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${isExpanded ? "bg-gray-50/50" : ""}`}>
+      <tr onClick={onToggle} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer ${isExpanded ? "bg-gray-50/50" : ""}`}>
         <td className="px-6 py-4">
-          <button onClick={onToggle} className="text-left group">
-            <div className="flex items-center gap-2">
-              <svg
-                className={`w-3.5 h-3.5 text-text-secondary transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-primary group-hover:text-primary-dark">{invoice.parentName}</p>
-                <p className="text-xs text-text-secondary">{invoice.parentEmail}</p>
-              </div>
+          <div className="flex items-center gap-2 group">
+            <svg
+              className={`w-3.5 h-3.5 text-text-secondary transition-transform ${isExpanded ? "rotate-90" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-primary group-hover:text-primary-dark">{invoice.parentName}</p>
+              <p className="text-xs text-text-secondary">{invoice.parentEmail}</p>
             </div>
-          </button>
+          </div>
         </td>
         <td className="px-6 py-4 text-sm text-text-secondary">{monthNames[invoice.period_month - 1]} {invoice.period_year}</td>
         <td className="px-6 py-4 text-sm font-medium text-text text-right">{formatCLP(invoice.total)}</td>
         <td className="px-6 py-4 text-center">
           <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[invoice.status]}`}>{statusLabel[invoice.status]}</span>
         </td>
-        <td className="px-6 py-4 text-right space-x-3">
+        <td className="px-6 py-4 text-right space-x-3" onClick={(e) => e.stopPropagation()}>
           {invoice.status === "generated" && (
             <ApproveInvoiceButton invoiceId={invoice.id} />
           )}
