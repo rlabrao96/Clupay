@@ -15,6 +15,21 @@ const statusLabel: Record<EnrollmentStatus, string> = {
   cancelled: "Cancelado",
 };
 
+interface Enrollment {
+  id: string;
+  sport: string;
+  plan: string;
+  status: EnrollmentStatus;
+}
+
+interface KidRow {
+  kidId: string;
+  kidName: string;
+  parentName: string;
+  parentEmail: string;
+  enrollments: Enrollment[];
+}
+
 export default async function DeportistasPage() {
   const supabase = await createServerSupabaseClient();
   const clubId = await getClubForUser(supabase);
@@ -23,27 +38,40 @@ export default async function DeportistasPage() {
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select(
-      "id, status, kids:kid_id(name, last_names, parent_id, profiles:parent_id(name, last_names, email)), sports:sport_id(name), plans:plan_id(name)"
+      "id, status, kid_id, kids:kid_id(name, last_names, parent_id, profiles:parent_id(name, last_names, email)), sports:sport_id(name), plans:plan_id(name)"
     )
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
 
-  const rows = (enrollments ?? []).map((e: any) => ({
-    id: e.id,
-    kidName: `${e.kids?.name ?? ""} ${e.kids?.last_names ?? ""}`.trim(),
-    parentName: `${e.kids?.profiles?.name ?? ""} ${e.kids?.profiles?.last_names ?? ""}`.trim(),
-    parentEmail: e.kids?.profiles?.email ?? "—",
-    sport: e.sports?.name ?? "—",
-    plan: e.plans?.name ?? "—",
-    status: e.status as EnrollmentStatus,
-  }));
+  const kidsMap = new Map<string, KidRow>();
+  for (const e of (enrollments ?? []) as any[]) {
+    const kidId = e.kid_id as string;
+    if (!kidsMap.has(kidId)) {
+      kidsMap.set(kidId, {
+        kidId,
+        kidName: `${e.kids?.name ?? ""} ${e.kids?.last_names ?? ""}`.trim(),
+        parentName: `${e.kids?.profiles?.name ?? ""} ${e.kids?.profiles?.last_names ?? ""}`.trim(),
+        parentEmail: e.kids?.profiles?.email ?? "—",
+        enrollments: [],
+      });
+    }
+    kidsMap.get(kidId)!.enrollments.push({
+      id: e.id,
+      sport: e.sports?.name ?? "—",
+      plan: e.plans?.name ?? "—",
+      status: e.status as EnrollmentStatus,
+    });
+  }
+
+  const kids = Array.from(kidsMap.values());
+  const totalEnrollments = kids.reduce((sum, k) => sum + k.enrollments.length, 0);
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text mb-1">Deportistas</h1>
         <p className="text-text-secondary">
-          {rows.length} {rows.length === 1 ? "inscripción" : "inscripciones"}
+          {kids.length} {kids.length === 1 ? "deportista" : "deportistas"} · {totalEnrollments} {totalEnrollments === 1 ? "inscripción" : "inscripciones"}
         </p>
       </div>
 
@@ -54,26 +82,29 @@ export default async function DeportistasPage() {
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Deportista</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Apoderado</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Email</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Deporte</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Plan</th>
-              <th className="text-center px-6 py-4 text-sm font-medium text-text-secondary">Estado</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-text-secondary">Inscripciones</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-text-secondary">No hay deportistas inscritos</td></tr>
+            {kids.length === 0 ? (
+              <tr><td colSpan={4} className="px-6 py-12 text-center text-text-secondary">No hay deportistas inscritos</td></tr>
             ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-text">{row.kidName}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{row.parentName}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{row.parentEmail}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{row.sport}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{row.plan}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[row.status]}`}>
-                      {statusLabel[row.status]}
-                    </span>
+              kids.map((kid) => (
+                <tr key={kid.kidId} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors align-top">
+                  <td className="px-6 py-4 text-sm font-medium text-text">{kid.kidName}</td>
+                  <td className="px-6 py-4 text-sm text-text-secondary">{kid.parentName}</td>
+                  <td className="px-6 py-4 text-sm text-text-secondary">{kid.parentEmail}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      {kid.enrollments.map((en) => (
+                        <span
+                          key={en.id}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge[en.status]}`}
+                        >
+                          {en.sport} · {en.plan}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                 </tr>
               ))
