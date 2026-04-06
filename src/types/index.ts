@@ -170,5 +170,13 @@ export interface Invitation {
   created_at: string;
 }
 
+export interface ClubParent {
+  id: string;
+  club_id: string;
+  parent_id: string;
+  joined_at: string;
+  created_at: string;
+}
+
 export type NotificationStatus = "scheduled" | "sent" | "failed";
 export type InvitationStatus = "pending" | "accepted" | "expired";
