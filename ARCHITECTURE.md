@@ -25,7 +25,7 @@ CluPay is a single Next.js 16 application serving three portals via route groups
 │              Supabase                            │
 │  ┌────────┐ ┌─────┐ ┌───────────┐ ┌──────────┐ │
 │  │ Auth   │ │ DB  │ │ Edge Fns  │ │ Storage  │ │
-│  │ + RLS  │ │ PG  │ │ (future)  │ │ (future) │ │
+│  │ + RLS  │ │ PG  │ │ (future)  │ │ (logos)  │ │
 │  └────────┘ └─────┘ └───────────┘ └──────────┘ │
 ├─────────────────────────────────────────────────┤
 │              Email (Nodemailer + Gmail SMTP)      │
@@ -59,6 +59,7 @@ Entry point: `src/app/layout.tsx` (root layout with Providers).
 
 Server-side mutations that handle DB operations + email sending:
 - `send-invitation.ts` — Insert invitation + send invitation email
+- `delete-invitation.ts` — Delete invitation record
 - `approve-invoice.ts` — Approve invoice(s) + send invoice-ready email (single and bulk)
 - `mark-invoice-paid.ts` — Call `mark_invoice_paid` RPC + send payment confirmation email
 
@@ -99,7 +100,7 @@ Client-side role check. Fetches the user's profile from `profiles` table, compar
 ### Formatting Utilities (`src/lib/format.ts`)
 
 - `formatCLP(amount)` — Chilean Peso formatting via `Intl.NumberFormat("es-CL")`, no decimals.
-- `formatDate(dateString)` — Localized date display, timezone-safe (parses Y/M/D explicitly).
+- `formatDate(dateString)` — Localized date display via `new Date()`, handles both ISO timestamps and YYYY-MM-DD.
 - `formatPercent(value)` — Percentage with 2 decimal places.
 
 ### RUT Validation (`src/lib/rut/validate.ts`)
@@ -120,7 +121,7 @@ Chilean RUT validation using the modulo 11 algorithm. Exports `validateRut`, `fo
 | `club_parents` | Links parents to clubs (created on invitation acceptance) | FK to profiles + clubs |
 | `kids` | Children of parents | FK to profiles (parent_id) |
 | `sports` | Sports/activities per club | FK to clubs |
-| `plans` | Pricing plans per sport | FK to sports |
+| `plans` | Pricing plans per sport (with optional `max_slots` capacity) | FK to sports |
 | `enrollments` | Kid enrolled in sport/plan at club | FK to kids, clubs, sports, plans |
 | `invoices` | Monthly bills per parent per club | FK to profiles, clubs |
 | `invoice_items` | Line items per invoice | FK to invoices, kids, sports, plans |
@@ -173,6 +174,7 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 ## External Integrations
 
 - **Gmail SMTP** (via Nodemailer) — Transactional emails. Configured via `SMTP_USER` and `SMTP_PASS` env vars. 500 emails/day free tier.
+- **Supabase Storage** — Public `club-logos` bucket for club logo uploads. RLS policies allow authenticated upload/update/delete, public read.
 
 ## Infrastructure & Deployment
 

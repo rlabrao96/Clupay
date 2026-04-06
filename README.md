@@ -69,7 +69,7 @@ cp .env.example .env.local
 
 ### Database Setup
 
-Run migrations against your Supabase project. Migrations are in `supabase/migrations/` (21 files, `00001` through `00031`).
+Run migrations against your Supabase project. Migrations are in `supabase/migrations/` (28 files, `00001` through `00031`).
 
 To seed test data with sample accounts:
 
@@ -114,11 +114,11 @@ src/
 ├── components/
 │   ├── shared/           # AuthGuard, LogoutButton, RutInput, Providers
 │   ├── admin/            # ClubForm, ClubAdminManager
-│   ├── club/             # SportForm, PlanForm, MarkPaidButton, ApproveInvoiceButton, etc.
+│   ├── club/             # SportForm, PlanForm, InvoiceTable, MarkPaidButton, DeleteInvitationButton, etc.
 │   ├── app/              # KidForm, ProfileForm
 │   └── invite/           # EnrollmentForm (invitation acceptance)
 ├── lib/
-│   ├── actions/          # Server actions (send-invitation, approve-invoice, mark-invoice-paid)
+│   ├── actions/          # Server actions (send-invitation, delete-invitation, approve-invoice, mark-invoice-paid)
 │   ├── email/            # Email client (Nodemailer), templates, notification sender
 │   ├── supabase/         # Client, server, service role, and middleware helpers
 │   ├── rut/              # Chilean RUT validation (modulo 11)
@@ -129,7 +129,7 @@ src/
 └── types/
     └── index.ts          # All TypeScript interfaces and type aliases
 supabase/
-├── migrations/           # 21 SQL migration files
+├── migrations/           # 28 SQL migration files
 └── seed.sql              # Test data
 __tests__/
 └── lib/
@@ -143,7 +143,7 @@ __tests__/
 
 **Super Admin Portal** (`/admin`) — Platform-wide management for the CluPay team. Dashboard with KPIs (clubs, athletes, revenue, overdue invoices). CRUD for clubs with admin assignment and fee configuration. User listing across all roles. Platform billing/revenue tracking per club.
 
-**Club Admin Portal** (`/club`) — Club-scoped management for academy owners. Dashboard with club KPIs. CRUD for sports and plans. Athlete listing with enrollment details. Invoice management with approve and mark-as-paid actions (which trigger email notifications). Send invitations to parents. Manage discounts per kid or parent. Club configuration (billing day, due day, auto-approve invoices).
+**Club Admin Portal** (`/club`) — Club-scoped management for academy owners. Dashboard with club KPIs. Unified "Deportes y Planes" page with collapsible sport sections, inline plan management, enrollment counts, capacity limits, and estimated monthly revenue. Athletes grouped by kid with enrollment badges and monthly totals. Invoice management with expandable detail rows (click any row to see line items per kid/sport/plan). Invitation management with inline delete confirmation. Manage discounts per kid or parent. Club configuration (billing day, due day, auto-approve, logo upload via Supabase Storage).
 
 **Parent Portal** (`/app`) — Mobile-first experience for parents. Dashboard showing next payment with status badge and "Pagar Ahora" button. Payment history with invoice cards. Kids listing with enrollment details per club/sport/plan. Add kid with RUT validation. Profile management.
 

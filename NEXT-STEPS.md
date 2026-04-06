@@ -1,6 +1,6 @@
 # Next Steps
 
-_Last updated: 2026-04-06_
+_Last updated: 2026-04-07_
 
 ## In Progress
 
@@ -18,10 +18,9 @@ No items currently in progress.
 
 - **Invoice generation atomicity** — `invoice-generation.ts` inserts invoice and items in two separate calls. Wrap in a Supabase RPC/transaction to prevent desync.
 - **Plans query security** — `planes/page.tsx` fetches all plans then filters by club_id client-side, potentially exposing other clubs' data. Filter in the database query instead.
-- **Error handling on delete operations** — Sports, plans, and discount delete/deactivate operations don't check for errors. FK constraint failures show no user feedback.
+- **Error handling on delete operations** — Sports, plans, and discount delete/deactivate operations don't check for FK constraint failures gracefully.
 - **Discount form kid picker** — When a parent has multiple kids, the form auto-selects the first one. Add a dropdown to choose which kid gets the discount.
 - **Duplicate status badge configs** — Dashboard and payments pages define similar but different status maps. Extract to `src/lib/invoice-status.ts`.
-- **Duplicated club resolution logic** — Several club portal pages duplicate `getClubForUser` inline instead of importing from `lib/club.ts`.
 - **Loading states** — Add `loading.tsx` skeleton files for server component route segments across all portals.
 - **Pagination** — Users, clubs, billing, athletes, and invoice tables render all records. Add pagination for scale.
 - **Style consistency** — Admin layout uses inline styles while club/parent layouts use Tailwind classes. Standardize on Tailwind design tokens.
