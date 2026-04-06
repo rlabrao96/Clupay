@@ -1,22 +1,26 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const DEFAULT_FROM = "CluPay <onboarding@resend.dev>";
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 export async function sendEmail(
   to: string,
   subject: string,
   html: string
 ): Promise<{ success: boolean; error?: string }> {
-  const from = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
+  const from = process.env.SMTP_FROM || `CluPay <${process.env.SMTP_USER}>`;
 
-  const { error } = await resend.emails.send({ from, to, subject, html });
-
-  if (error) {
-    console.error("Resend error:", error);
-    return { success: false, error: error.message };
+  try {
+    await transporter.sendMail({ from, to, subject, html });
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("SMTP error:", message);
+    return { success: false, error: message };
   }
-
-  return { success: true };
 }
