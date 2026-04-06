@@ -9,8 +9,9 @@ export function formatCLP(amount: number): string {
 }
 
 export function formatDate(dateString: string): string {
-  const [y, m, d] = dateString.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("es-CL", {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("es-CL", {
     day: "2-digit",
     month: "short",
     year: "numeric",
