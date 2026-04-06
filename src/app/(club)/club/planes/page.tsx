@@ -207,7 +207,14 @@ export default function DeportesYPlanesPage() {
 
                 {/* Plans table */}
                 {!isCollapsed && sportPlans.length > 0 && (
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col className="w-[35%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
                       <tr className="border-t border-gray-100">
                         <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary">Plan</th>
