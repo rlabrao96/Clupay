@@ -200,6 +200,7 @@ export default function DeportesYPlanesPage() {
                       sports={[sport]}
                       plan={editingPlan}
                       onCancel={handlePlanFormCancel}
+                      hideSportSelect
                     />
                   </div>
                 )}

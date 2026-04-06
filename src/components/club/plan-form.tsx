@@ -9,9 +9,10 @@ interface PlanFormProps {
   sports: Sport[];
   plan?: Plan;
   onCancel: () => void;
+  hideSportSelect?: boolean;
 }
 
-export function PlanForm({ sports, plan, onCancel }: PlanFormProps) {
+export function PlanForm({ sports, plan, onCancel, hideSportSelect }: PlanFormProps) {
   const router = useRouter();
   const supabase = createClient();
   const isEditing = !!plan;
@@ -59,12 +60,14 @@ export function PlanForm({ sports, plan, onCancel }: PlanFormProps) {
   return (
     <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 space-y-4">
       {error && <p className="text-sm text-danger">{error}</p>}
-      <div>
-        <label htmlFor="planSport" className="block text-sm font-medium text-text mb-1">Deporte *</label>
-        <select id="planSport" value={sportId} onChange={(e) => setSportId(e.target.value)} className={inputClass} disabled={isEditing}>
-          {sports.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
-        </select>
-      </div>
+      {!hideSportSelect && (
+        <div>
+          <label htmlFor="planSport" className="block text-sm font-medium text-text mb-1">Deporte *</label>
+          <select id="planSport" value={sportId} onChange={(e) => setSportId(e.target.value)} className={inputClass} disabled={isEditing}>
+            {sports.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+          </select>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="planName" className="block text-sm font-medium text-text mb-1">Nombre *</label>
