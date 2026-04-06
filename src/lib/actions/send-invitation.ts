@@ -55,7 +55,7 @@ export async function sendInvitation(
     type: "invitation",
     subject,
     html,
-    metadata: { invitation_id: invitation.id, token: invitation.token },
+    metadata: { invitation_id: invitation.id },
   });
 
   return { success: true };

@@ -28,7 +28,9 @@ export async function sendNotification(params: SendNotificationParams): Promise<
     body: html,
     status: result.success ? "sent" : "failed",
     sent_at: result.success ? now : null,
-    metadata: metadata ?? null,
+    metadata: result.success
+      ? (metadata ?? null)
+      : { ...(metadata ?? {}), error: result.error },
   });
 
   if (dbError) {

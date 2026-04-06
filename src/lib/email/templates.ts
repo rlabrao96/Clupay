@@ -1,3 +1,11 @@
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 interface EmailContent {
   title: string;
   body: string;
@@ -48,14 +56,15 @@ export function invitationEmail(
   token: string,
   appUrl: string
 ): EmailResult {
+  const safe = escapeHtml(clubName);
   return {
     subject: `${clubName} te invita a CluPay`,
     html: buildEmailHtml({
-      title: `${clubName} te invita a CluPay`,
-      body: `<p>Has sido invitado/a a unirte a <strong>${clubName}</strong> en CluPay.</p>
+      title: `${safe} te invita a CluPay`,
+      body: `<p>Has sido invitado/a a unirte a <strong>${safe}</strong> en CluPay.</p>
              <p>Haz clic en el botón para aceptar la invitación e inscribir a tus hijos.</p>`,
       ctaText: "Aceptar invitación",
-      ctaUrl: `${appUrl}/invite/${token}`,
+      ctaUrl: `${appUrl}/invite/${encodeURIComponent(token)}`,
     }),
   };
 }
@@ -66,11 +75,12 @@ export function invoiceReadyEmail(
   dueDate: string,
   appUrl: string
 ): EmailResult {
+  const safe = escapeHtml(clubName);
   return {
     subject: `Nueva factura de ${clubName}`,
     html: buildEmailHtml({
-      title: `Nueva factura de ${clubName}`,
-      body: `<p>Tienes una nueva factura por <strong>${total}</strong> con vencimiento el <strong>${dueDate}</strong>.</p>`,
+      title: `Nueva factura de ${safe}`,
+      body: `<p>Tienes una nueva factura por <strong>${escapeHtml(total)}</strong> con vencimiento el <strong>${escapeHtml(dueDate)}</strong>.</p>`,
       ctaText: "Ver factura",
       ctaUrl: `${appUrl}/app`,
     }),
@@ -82,11 +92,12 @@ export function paymentConfirmationEmail(
   total: string,
   periodLabel: string
 ): EmailResult {
+  const safe = escapeHtml(clubName);
   return {
     subject: `Pago confirmado — ${clubName}`,
     html: buildEmailHtml({
-      title: `Pago confirmado — ${clubName}`,
-      body: `<p>Tu pago de <strong>${total}</strong> para <strong>${periodLabel}</strong> ha sido registrado exitosamente.</p>
+      title: `Pago confirmado — ${safe}`,
+      body: `<p>Tu pago de <strong>${escapeHtml(total)}</strong> para <strong>${escapeHtml(periodLabel)}</strong> ha sido registrado exitosamente.</p>
              <p>Gracias por tu pago.</p>`,
     }),
   };
@@ -98,11 +109,12 @@ export function paymentReminderEmail(
   dueDate: string,
   appUrl: string
 ): EmailResult {
+  const safe = escapeHtml(clubName);
   return {
     subject: `Recordatorio: factura por vencer — ${clubName}`,
     html: buildEmailHtml({
-      title: `Recordatorio de pago — ${clubName}`,
-      body: `<p>Tu factura de <strong>${total}</strong> vence el <strong>${dueDate}</strong>.</p>
+      title: `Recordatorio de pago — ${safe}`,
+      body: `<p>Tu factura de <strong>${escapeHtml(total)}</strong> vence el <strong>${escapeHtml(dueDate)}</strong>.</p>
              <p>Realiza tu pago antes de la fecha de vencimiento para evitar recargos.</p>`,
       ctaText: "Pagar ahora",
       ctaUrl: `${appUrl}/app`,
@@ -116,11 +128,12 @@ export function overdueAlertEmail(
   daysOverdue: number,
   appUrl: string
 ): EmailResult {
+  const safe = escapeHtml(clubName);
   return {
     subject: `Factura vencida — ${clubName}`,
     html: buildEmailHtml({
-      title: `Factura vencida — ${clubName}`,
-      body: `<p>Tu factura de <strong>${total}</strong> está vencida hace <strong>${daysOverdue} día(s)</strong>.</p>
+      title: `Factura vencida — ${safe}`,
+      body: `<p>Tu factura de <strong>${escapeHtml(total)}</strong> está vencida hace <strong>${daysOverdue} día(s)</strong>.</p>
              <p>Por favor, regulariza tu pago lo antes posible.</p>`,
       ctaText: "Pagar ahora",
       ctaUrl: `${appUrl}/app`,

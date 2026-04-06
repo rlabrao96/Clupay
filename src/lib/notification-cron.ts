@@ -32,9 +32,25 @@ export async function processNotifications(
     return name;
   }
 
-  async function getParentEmail(parentId: string): Promise<string | null> {
-    const { data } = await supabase.from("profiles").select("email").eq("id", parentId).single();
-    return data?.email ?? null;
+  const parentEmailCache = new Map<string, string | null>();
+
+  async function batchLoadParentEmails(parentIds: string[]): Promise<void> {
+    const uncached = parentIds.filter((id) => !parentEmailCache.has(id));
+    if (uncached.length === 0) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", uncached);
+    for (const profile of data ?? []) {
+      parentEmailCache.set(profile.id, profile.email ?? null);
+    }
+    for (const id of uncached) {
+      if (!parentEmailCache.has(id)) parentEmailCache.set(id, null);
+    }
+  }
+
+  function getParentEmail(parentId: string): string | null {
+    return parentEmailCache.get(parentId) ?? null;
   }
 
   async function wasAlreadySent(
@@ -65,11 +81,14 @@ export async function processNotifications(
     .eq("due_date", reminderDateStr);
 
   let remindersSent = 0;
+  if (reminderInvoices && reminderInvoices.length > 0) {
+    await batchLoadParentEmails(reminderInvoices.map((inv) => inv.parent_id));
+  }
   for (const inv of reminderInvoices ?? []) {
     const alreadySent = await wasAlreadySent(inv.parent_id, "reminder", { invoice_id: inv.id });
     if (alreadySent) continue;
 
-    const email = await getParentEmail(inv.parent_id);
+    const email = getParentEmail(inv.parent_id);
     if (!email) continue;
 
     const clubName = await getClubName(inv.club_id);
@@ -106,6 +125,9 @@ export async function processNotifications(
       .eq("status", "overdue")
       .eq("due_date", overdueDateStr);
 
+    if (overdueInvoices && overdueInvoices.length > 0) {
+      await batchLoadParentEmails(overdueInvoices.map((inv) => inv.parent_id));
+    }
     for (const inv of overdueInvoices ?? []) {
       const alreadySent = await wasAlreadySent(inv.parent_id, "overdue", {
         invoice_id: inv.id,
@@ -113,7 +135,7 @@ export async function processNotifications(
       });
       if (alreadySent) continue;
 
-      const email = await getParentEmail(inv.parent_id);
+      const email = getParentEmail(inv.parent_id);
       if (!email) continue;
 
       const clubName = await getClubName(inv.club_id);
@@ -141,8 +163,11 @@ export async function processNotifications(
       .select("id, parent_id, club_id, total, due_date")
       .in("id", options.autoApprovedInvoiceIds);
 
+    if (autoInvoices && autoInvoices.length > 0) {
+      await batchLoadParentEmails(autoInvoices.map((inv) => inv.parent_id));
+    }
     for (const inv of autoInvoices ?? []) {
-      const email = await getParentEmail(inv.parent_id);
+      const email = getParentEmail(inv.parent_id);
       if (!email) continue;
 
       const clubName = await getClubName(inv.club_id);

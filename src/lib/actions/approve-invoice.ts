@@ -18,7 +18,7 @@ export async function approveInvoice(invoiceId: string): Promise<ApproveResult> 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Sesión expirada" };
 
-  // Update invoice status
+  // Update invoice status — RLS scopes this to the user's club
   const { error: updateError } = await supabase
     .from("invoices")
     .update({ status: "pending" })
@@ -75,7 +75,7 @@ export async function bulkApproveInvoices(invoiceIds: string[]): Promise<BulkApp
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Sesión expirada" };
 
-  // Update all invoices
+  // Update all invoices — RLS scopes this to the user's club
   const { error: updateError } = await supabase
     .from("invoices")
     .update({ status: "pending" })
