@@ -5,6 +5,7 @@ interface GenerationResult {
   clubs_processed: number;
   invoices_generated: number;
   invoices_skipped: number;
+  auto_approved_invoice_ids: string[];
 }
 
 interface EnrollmentRow {
@@ -65,6 +66,7 @@ export async function generateInvoices(
 
   let totalGenerated = 0;
   let totalSkipped = 0;
+  const allAutoApprovedIds: string[] = [];
 
   for (const club of clubs) {
     const result = await generateClubInvoices(
@@ -75,6 +77,7 @@ export async function generateInvoices(
     );
     totalGenerated += result.generated;
     totalSkipped += result.skipped;
+    allAutoApprovedIds.push(...result.autoApprovedIds);
   }
 
   return {
@@ -82,6 +85,7 @@ export async function generateInvoices(
     clubs_processed: clubs.length,
     invoices_generated: totalGenerated,
     invoices_skipped: totalSkipped,
+    auto_approved_invoice_ids: allAutoApprovedIds,
   };
 }
 
@@ -95,7 +99,7 @@ async function generateClubInvoices(
   },
   periodMonth: number,
   periodYear: number
-): Promise<{ generated: number; skipped: number }> {
+): Promise<{ generated: number; skipped: number; autoApprovedIds: string[] }> {
   // Find distinct parents with active enrollments
   const { data: enrollments, error: enrollError } = await supabase
     .from("enrollments")
@@ -104,7 +108,7 @@ async function generateClubInvoices(
     .eq("status", "active");
 
   if (enrollError) throw new Error(`Failed to fetch enrollments: ${enrollError.message}`);
-  if (!enrollments || enrollments.length === 0) return { generated: 0, skipped: 0 };
+  if (!enrollments || enrollments.length === 0) return { generated: 0, skipped: 0, autoApprovedIds: [] };
 
   // Group enrollments by parent
   const byParent = new Map<string, EnrollmentRow[]>();
@@ -116,6 +120,7 @@ async function generateClubInvoices(
 
   let generated = 0;
   let skipped = 0;
+  const autoApprovedIds: string[] = [];
 
   for (const [parentId, parentEnrollments] of byParent) {
     // Check idempotency
@@ -133,7 +138,7 @@ async function generateClubInvoices(
       continue;
     }
 
-    await generateParentInvoice(
+    const invoiceId = await generateParentInvoice(
       supabase,
       club,
       parentId,
@@ -142,9 +147,12 @@ async function generateClubInvoices(
       periodYear
     );
     generated++;
+    if (club.auto_approve_invoices) {
+      autoApprovedIds.push(invoiceId);
+    }
   }
 
-  return { generated, skipped };
+  return { generated, skipped, autoApprovedIds };
 }
 
 async function generateParentInvoice(
@@ -159,7 +167,7 @@ async function generateParentInvoice(
   enrollments: EnrollmentRow[],
   periodMonth: number,
   periodYear: number
-): Promise<void> {
+): Promise<string> {
   const kidIds = [...new Set(enrollments.map((e) => e.kid_id))];
 
   // Fetch active discounts for this parent at this club
@@ -285,6 +293,8 @@ async function generateParentInvoice(
 
   // Update discount counters
   await updateDiscountCounters(supabase, [...kidDiscounts, ...parentDiscounts]);
+
+  return invoice.id;
 }
 
 function calculateDueDate(
