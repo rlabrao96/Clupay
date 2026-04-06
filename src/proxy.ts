@@ -4,46 +4,22 @@ import { updateSession } from "@/lib/supabase/middleware";
 const PUBLIC_PATHS = ["/", "/login", "/register", "/callback", "/invite"];
 
 export async function proxy(request: NextRequest) {
-  const { user, response, supabase } = await updateSession(request);
+  const { user, response } = await updateSession(request);
   const path = request.nextUrl.pathname;
 
+  // Allow public paths
   if (PUBLIC_PATHS.some((p) => path.startsWith(p))) {
     return response;
   }
 
+  // Redirect unauthenticated users to login
   if (!user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", path);
     return NextResponse.redirect(loginUrl);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    if (!path.startsWith("/register")) {
-      return NextResponse.redirect(new URL("/register/complete", request.url));
-    }
-    return response;
-  }
-
-  const role = profile.role;
-
-  if (path.startsWith("/admin") && role !== "super_admin") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  if (path.startsWith("/club") && role !== "club_admin" && role !== "super_admin") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  if (path.startsWith("/app") && role !== "parent") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
+  // Role-based routing is handled by AuthGuard in each layout
   return response;
 }
 
