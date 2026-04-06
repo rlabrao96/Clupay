@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { RutInput } from "@/components/shared/rut-input";
 import { cleanRut } from "@/lib/rut/validate";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [form, setForm] = useState({
     name: "",
     apellidos: "",
@@ -21,6 +21,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/app";
   const supabase = createClient();
 
   function handleChange(field: string, value: string) {
@@ -56,8 +58,8 @@ export default function RegisterPage() {
     const { error: profileError } = await supabase.from("profiles").insert({
       id: authData.user.id,
       email: form.email,
-      first_name: form.name,
-      last_name: form.apellidos,
+      name: form.name,
+      last_names: form.apellidos,
       rut: cleanRut(form.rut),
       date_of_birth: form.fechaNacimiento || null,
       phone: form.phone || null,
@@ -70,8 +72,12 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/app");
+    router.push(redirect);
   }
+
+  const loginHref = redirect !== "/app"
+    ? `/login?redirect=${encodeURIComponent(redirect)}`
+    : "/login";
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -191,10 +197,29 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-gray-500">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="font-medium" style={{ color: "#3B82F6" }}>
+        <Link href={loginHref} className="font-medium" style={{ color: "#3B82F6" }}>
           Inicia sesión
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <div className="flex justify-center py-8">
+            <div
+              className="animate-spin rounded-full h-8 w-8 border-b-2"
+              style={{ borderColor: "#3B82F6" }}
+            />
+          </div>
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }
