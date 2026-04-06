@@ -1,6 +1,6 @@
 # Next Steps
 
-_Last updated: 2026-04-05_
+_Last updated: 2026-04-06_
 
 ## In Progress
 
@@ -10,7 +10,7 @@ No items currently in progress.
 
 ### Phase 1 — Core Loop (make the product work end-to-end)
 
-- **Email notifications via Resend** — Transactional emails for: payment reminders (3 days before), due date reminders, payment confirmations, overdue alerts (1/3/7 days), invitation emails, invoice/receipt PDF attachments.
+~~**Email notifications via Resend** — COMPLETE. Implemented invitation emails, invoice-ready notifications, payment confirmations, payment reminders (3 days before due), and overdue alerts (1/3/7 days after due) using Resend + server actions + daily cron job.~~
 
 ### Phase 2 — Money Flows
 
