@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AuthGuard } from "@/components/shared/auth-guard";
+import { LogoutButton } from "@/components/shared/logout-button";
 
 const navItems = [
   {
@@ -71,7 +72,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <AuthGuard requiredRole="parent">
       <div className="min-h-screen pb-20" style={{ backgroundColor: "#F0F7FF" }}>
         <div className="max-w-lg mx-auto">
-          <main className="px-4 py-6">{children}</main>
+          <header className="flex items-center justify-between px-4 pt-4">
+            <h1 className="text-lg font-bold" style={{ color: "#3B82F6" }}>CluPay</h1>
+            <LogoutButton />
+          </header>
+          <main className="px-4 py-4">{children}</main>
         </div>
         <BottomNav />
       </div>

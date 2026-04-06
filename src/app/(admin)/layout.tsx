@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AuthGuard } from "@/components/shared/auth-guard";
+import { LogoutButton } from "@/components/shared/logout-button";
 
 const navItems = [
   { href: "/admin", label: "Dashboard" },
@@ -35,6 +36,9 @@ function AdminSidebar() {
           ))}
         </ul>
       </nav>
+      <div className="px-3 py-4 border-t border-gray-100">
+        <LogoutButton />
+      </div>
     </aside>
   );
 }
