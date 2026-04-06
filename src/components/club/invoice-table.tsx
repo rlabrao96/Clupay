@@ -199,9 +199,9 @@ function InvoiceRowGroup({
             </tr>
           ) : items && items.length > 0 ? (
             <>
-              {/* Detail header */}
+              {/* Detail header — pl-[46px] aligns with parent name (px-6 + chevron + gap) */}
               <tr className="bg-gray-50/80">
-                <td className="px-6 py-2 text-xs font-medium text-text-secondary">Deportista</td>
+                <td className="pl-[46px] pr-6 py-2 text-xs font-medium text-text-secondary">Deportista</td>
                 <td className="px-6 py-2 text-xs font-medium text-text-secondary">Deporte</td>
                 <td className="px-6 py-2 text-xs font-medium text-text-secondary">Plan</td>
                 <td className="px-6 py-2 text-xs font-medium text-text-secondary text-right">Monto</td>
@@ -212,7 +212,7 @@ function InvoiceRowGroup({
               {/* Detail items */}
               {items.map((item) => (
                 <tr key={item.id} className="bg-gray-50/80 border-t border-gray-200/50">
-                  <td className="px-6 py-2 text-xs text-text">{item.kidName}</td>
+                  <td className="pl-[46px] pr-6 py-2 text-xs text-text">{item.kidName}</td>
                   <td className="px-6 py-2 text-xs text-text-secondary">{item.sportName}</td>
                   <td className="px-6 py-2 text-xs text-text-secondary">{item.planName}</td>
                   <td className="px-6 py-2 text-xs text-text text-right">{formatCLP(item.amount)}</td>
