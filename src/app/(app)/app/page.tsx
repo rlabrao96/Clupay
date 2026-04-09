@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { formatCLP, formatDate } from "@/lib/format";
+import { PayNowButton } from "@/components/app/pay-now-button";
 
 const statusBadge: Record<string, { class: string; label: string }> = {
   overdue: { class: "bg-danger-light text-danger", label: "Atrasado" },
@@ -78,9 +79,7 @@ export default async function AppHomePage() {
           </p>
           <p className="text-3xl font-bold text-text mb-1">{formatCLP(nextInvoice.total)}</p>
           <p className="text-sm text-text-secondary mb-4">Vence: {formatDate(nextInvoice.due_date)}</p>
-          <button className="w-full py-3 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-dark transition-colors">
-            Pagar Ahora
-          </button>
+          <PayNowButton invoiceId={nextInvoice.id} />
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
