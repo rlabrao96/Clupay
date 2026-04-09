@@ -68,9 +68,10 @@ Browser redirected to Flow checkout
         │   payment/getStatus           │
         │ - Idempotency check on        │
         │   flow_transaction_id         │
-        │ - Mark payments.status=paid   │
-        │ - Call mark_invoice_paid RPC  │
-        │ - Send confirmation email     │
+        │ - Mark payments.status=        │
+        │   completed                    │
+        │ - Mark invoice paid            │
+        │ - Send confirmation email      │
         └───────────────────────────────┘
 ```
 
@@ -100,7 +101,7 @@ Preview deploys on Vercel will hit real Flow by default. If desired, `FLOW_MOCK=
 | `src/lib/flow/client.ts` | Flow API client — `createPayment()`, `getPaymentStatus()`. Handles HMAC-SHA256 signing, mock-mode short-circuit, prod-safety guard. |
 | `src/lib/flow/signature.ts` | HMAC-SHA256 signing helper. Flow requires params sorted alphabetically, concatenated, then signed with the secret key. Isolated so it is unit-testable. |
 | `src/lib/actions/create-flow-payment.ts` | Server action. Input: `invoiceId`. Validates parent owns invoice and invoice is payable, inserts `payments` row, calls Flow, updates row with `flow_transaction_id`, returns `{ url }`. |
-| `src/lib/flow/confirm-payment.ts` | Shared confirmation logic used by both the webhook and the mock return route. Idempotent on `flow_transaction_id`. Marks payment paid, calls `mark_invoice_paid` RPC, sends confirmation email. |
+| `src/lib/flow/confirm-payment.ts` | Shared confirmation logic used by both the webhook and the mock return route. Idempotent on `flow_transaction_id`. Updates `payments.status='completed'`, updates `invoices.status='paid'`, sends confirmation email. Does NOT reuse the existing `mark_invoice_paid` RPC because that RPC inserts a new payments row, which would duplicate the row we pre-inserted in the server action. |
 | `src/app/api/webhooks/flow/confirm/route.ts` | `POST` handler. Reads `token` from form body, calls `getPaymentStatus(token)`, delegates to `confirm-payment.ts`. Returns `200` after processing (including already-confirmed) so Flow stops retrying. |
 | `src/app/(app)/app/pagos/retorno/page.tsx` | Browser return page. Reads `token` query param, polls our `payments` table (not Flow directly) for status, shows "Procesando…" → "Pago confirmado" / "Pago rechazado". |
 | `src/app/(app)/app/pagos/retorno/mock/route.ts` | Mock-mode only. Triggered by the mock `createPayment` URL. Calls `confirmPayment` directly, then redirects to the normal return page. Guarded so it only runs when `FLOW_MOCK=true`. |
@@ -151,9 +152,9 @@ If step 5 fails: mark the `payments` row as `failed`, return an error message to
 5. **Amount check:** if `response.amount !== payments.amount`, log a critical error and return `200` without marking paid. Flag for manual review.
 6. Branch on Flow status code:
    - `2` (paid) → delegate to `confirmPayment(paymentId)`:
-     - Update `payments`: `status='paid', paid_at=now()`.
-     - Call `mark_invoice_paid` RPC (existing logic; sets invoice status and creates related rows).
-     - Send payment confirmation email (reuse `sendPaymentConfirmation` from existing `mark-invoice-paid.ts`).
+     - Update `payments`: `status='completed', paid_at=now()`.
+     - Update `invoices`: `status='paid', paid_at=now()` (only if invoice not already paid).
+     - Send payment confirmation email (reuse `paymentConfirmationEmail` template + `sendNotification` from existing email infrastructure).
    - `3` (rejected) or `4` (cancelled) → mark `payments.status='failed'`, leave invoice alone.
    - `1` (pending) → do nothing; Flow will webhook again when settled.
 7. Return `200 OK` always (including already-processed) so Flow stops retrying.
@@ -180,12 +181,12 @@ In mock mode, `createPayment()` returns `url = /app/pagos/retorno/mock?paymentId
 | Parent closes tab mid-checkout | `payments` row stays `pending`. Flow may eventually webhook with a result or nothing happens. Next click creates a new payment (protected by the 30-min dedupe). |
 | Webhook arrives before browser return | Return page queries DB, finds `paid`, shows success immediately. |
 | Webhook arrives after browser return 30s timeout | Parent sees "procesando" message. Webhook runs, email is sent, next dashboard load reflects paid state. |
-| Webhook fires twice (Flow retry) | Idempotency check on `flow_transaction_id` + `payments.status='paid'` short-circuits. Returns 200, no double email. |
-| Webhook fires for invoice already paid manually | `mark_invoice_paid` RPC no-ops on already-paid invoices. Payment row still updates to `paid` to reflect Flow's record. Confirmation email is sent (accurate). |
+| Webhook fires twice (Flow retry) | Idempotency check on `flow_transaction_id` + `payments.status='completed'` short-circuits. Returns 200, no double email. |
+| Webhook fires for invoice already paid manually | Before updating the invoice, we check `invoices.status !== 'paid'`. If already paid, skip the invoice update. The payment row still updates to `completed` to reflect Flow's record. Confirmation email is still sent (accurate). |
 | `getPaymentStatus` returns amount ≠ our `payments.amount` | Log critical, do not mark paid, return 200. Requires manual review. Should never happen unless tampering. |
 | Webhook signature spoofing | We do not trust the inbound POST body. We only read `token` and call `getPaymentStatus(token)` back to Flow over HTTPS with our API key. Authenticity comes from that round-trip. Unknown tokens return 200 with no side effects. |
 | `confirmPayment` succeeds but email send fails | Email wrapped in try/catch; does not roll back payment. Notification row logged with `status='failed'` per existing pattern. |
-| `mark_invoice_paid` RPC fails after payment row updated | Log critical. Return 500 so Flow retries webhook; idempotency guards subsequent attempts. Not wrapped in a transaction — matches existing `mark-invoice-paid.ts` pattern. Atomicity is a separate, cross-cutting concern tracked in NEXT-STEPS. |
+| Invoice update fails after payment row updated | Log critical. Return 500 so Flow retries webhook; idempotency guards subsequent attempts. Not wrapped in a transaction — matches existing `mark-invoice-paid.ts` pattern. Atomicity is a separate, cross-cutting concern tracked in NEXT-STEPS. |
 | User double-clicks "Pagar Ahora" | Button enters loading state immediately. Server action also has the 30-min dedupe. |
 | User tries to pay someone else's invoice | Server action validates `parent_id === user.id`. |
 
