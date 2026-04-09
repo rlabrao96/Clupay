@@ -60,9 +60,16 @@ export async function createFlowPayment(
     return { success: false, error: "Esta factura no se puede pagar" };
   }
 
+  // All payments-table operations below use the service role client to
+  // bypass RLS: the parents_payments_* policies only grant SELECT to the
+  // invoice owner, not INSERT/UPDATE. Ownership was already validated
+  // above against the invoices table (parent-scoped RLS), so delegating
+  // the writes to the service role is safe.
+  const serviceClient = createServiceRoleClient();
+
   // Dedupe: any recent pending payment for this invoice?
   const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-  const { data: recent } = await supabase
+  const { data: recent } = await serviceClient
     .from("payments")
     .select("id, created_at, flow_transaction_id")
     .eq("invoice_id", invoiceId)
@@ -79,7 +86,6 @@ export async function createFlowPayment(
   }
 
   // Fetch parent email for the Flow checkout
-  const serviceClient = createServiceRoleClient();
   const { data: profile } = await serviceClient
     .from("profiles")
     .select("email")
@@ -92,7 +98,7 @@ export async function createFlowPayment(
   }
 
   // Pre-insert payments row
-  const { data: payment, error: insertErr } = await supabase
+  const { data: payment, error: insertErr } = await serviceClient
     .from("payments")
     .insert({
       invoice_id: invoiceId,
@@ -127,7 +133,7 @@ export async function createFlowPayment(
   } catch (err) {
     console.error("[createFlowPayment] Flow createPayment failed", err);
     // Mark row failed so it does not block dedupe
-    await supabase
+    await serviceClient
       .from("payments")
       .update({ status: "failed" })
       .eq("id", payment.id);
@@ -135,7 +141,7 @@ export async function createFlowPayment(
   }
 
   // Store token on the payments row
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await serviceClient
     .from("payments")
     .update({ flow_transaction_id: flowResult.token })
     .eq("id", payment.id);
@@ -146,7 +152,7 @@ export async function createFlowPayment(
     // This is recoverable via the webhook (Flow will POST the token, we
     // look it up by... we can't, without the token stored). Safer to
     // mark failed and let the parent retry.
-    await supabase
+    await serviceClient
       .from("payments")
       .update({ status: "failed" })
       .eq("id", payment.id);

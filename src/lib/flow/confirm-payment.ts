@@ -104,11 +104,12 @@ export async function confirmPayment(
   }
 
   // Only update invoice if not already paid (prevents double-paid state
-  // when admin already marked it paid manually)
+  // when admin already marked it paid manually). The invoices table has
+  // no `paid_at` column — status is the source of truth for paid state.
   if (invoice.status !== "paid") {
     const { error: invUpdateErr } = await supabase
       .from("invoices")
-      .update({ status: "paid", paid_at: now })
+      .update({ status: "paid" })
       .eq("id", invoice.id);
 
     if (invUpdateErr) {
