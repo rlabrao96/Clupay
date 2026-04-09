@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { createFlowClient } from "@/lib/flow/client";
 
 // Helper to set env vars for a single test
