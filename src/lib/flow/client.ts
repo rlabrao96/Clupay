@@ -60,7 +60,7 @@ export function createFlowClient(): FlowClient {
         )}&token=${encodeURIComponent(token)}`;
         return { token, url };
       },
-      async getPaymentStatus(_token) {
+      async getPaymentStatus() {
         throw new Error(
           "getPaymentStatus should not be called in FLOW_MOCK mode"
         );
