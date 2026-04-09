@@ -66,6 +66,10 @@ cp .env.example .env.local
 | `SMTP_PASS` | Yes | Gmail App Password (16-char, from Google Account settings) |
 | `SMTP_FROM` | No | Sender display name (defaults to `CluPay <SMTP_USER>`) |
 | `NEXT_PUBLIC_APP_URL` | No | App URL for email links (defaults to `http://localhost:3000`) |
+| `FLOW_API_BASE` | Yes | Flow.cl API base URL (`https://www.flow.cl/api`) |
+| `FLOW_API_KEY` | Yes | Flow.cl public API key |
+| `FLOW_SECRET_KEY` | Yes | Flow.cl secret key (HMAC signing) |
+| `FLOW_MOCK` | No | Set to `true` in `.env.local` only to mock Flow calls in development |
 
 ### Database Setup
 
