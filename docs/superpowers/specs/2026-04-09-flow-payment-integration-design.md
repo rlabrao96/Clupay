@@ -133,7 +133,7 @@ The `payments` table already has `invoice_id`, `method`, `amount`, `flow_transac
 3. Action validates:
    - User is authenticated and `invoice.parent_id === user.id`.
    - Invoice status is `pending` or `overdue` (not `paid`, `generated`, or `cancelled`).
-   - No existing `payments` row with `status='pending'` AND `flow_transaction_id IS NOT NULL` less than 30 minutes old for this invoice (prevents spamming Flow with duplicate checkouts).
+   - No existing `payments` row with `status='pending'` AND `flow_transaction_id IS NOT NULL` less than 30 minutes old for this invoice (prevents spamming Flow with duplicate checkouts). Rows with `status='failed'` do not block a retry — the parent can immediately try again after a rejected payment.
 4. Insert `payments` row: `{ invoice_id, amount: invoice.total, method: 'card_link', status: 'pending' }` → returns `paymentId`.
 5. Call `flowClient.createPayment({ commerceOrder: paymentId, amount, email: parent.email, subject: "CluPay - <club> - <month>", urlConfirmation, urlReturn })`.
 6. Update `payments` row: `flow_transaction_id = response.token`.
