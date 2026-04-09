@@ -34,10 +34,10 @@ CluPay is a single Next.js 16 application serving three portals via route groups
 │  │ payment confirmations                       │ │
 │  └─────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────┤
-│              External Services (planned)         │
+│              External Services                   │
 │  ┌─────────┐                                    │
-│  │ Flow.cl │                                     │
-│  │ Payments│                                     │
+│  │ Flow.cl │  Card payments (one-time)          │
+│  │ Payments│                                    │
 │  └─────────┘                                    │
 └─────────────────────────────────────────────────┘
 ```
@@ -175,6 +175,7 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 
 - **Gmail SMTP** (via Nodemailer) — Transactional emails. Configured via `SMTP_USER` and `SMTP_PASS` env vars. 500 emails/day free tier.
 - **Supabase Storage** — Public `club-logos` bucket for club logo uploads. RLS policies allow authenticated upload/update/delete, public read.
+- **Flow.cl** — Chilean payment processor. Parents pay invoices through Flow's hosted checkout. CluPay is the merchant of record; settlement to clubs happens externally. Configured via `FLOW_API_BASE`, `FLOW_API_KEY`, `FLOW_SECRET_KEY`. Local development uses `FLOW_MOCK=true` to skip real charges.
 
 ## Infrastructure & Deployment
 

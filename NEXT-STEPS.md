@@ -1,6 +1,6 @@
 # Next Steps
 
-_Last updated: 2026-04-07_
+_Last updated: 2026-04-09_
 
 ## In Progress
 
@@ -10,7 +10,9 @@ No items currently in progress.
 
 ### Phase 2 — Money Flows
 
-- **Flow.cl payment integration** — Card payments (automatic recurring + one-time links), bank transfer tracking, webhook handlers for payment status updates. The "Pagar Ahora" button in the parent dashboard is currently a non-functional placeholder.
+- **Flow.cl recurring subscriptions** — Card-on-file and auto-charge on the club billing day. One-time Flow payments via the "Pagar Ahora" button are live.
+- **Flow.cl refunds** — Refund API integration. Refunds are currently handled manually through the Flow dashboard.
+- **Bank transfer tracking** — Parents mark a transfer as "I paid" with a reference number, club admin confirms. Orthogonal to Flow.
 - **PDF generation** — Invoice PDFs (before payment) and receipt PDFs (after payment) using `@react-pdf/renderer`. Store in Supabase Storage. Show download links on the parent payment history page (`pdf_url` and `receipt_pdf_url` fields exist in the schema but are unused).
 - **Platform billing automation** — Auto-populate `platform_billing` table when invoices are paid, calculating fixed fee + commission per club per period. Currently the table exists but is not populated.
 
