@@ -159,5 +159,10 @@ export async function createFlowPayment(
     return { success: false, error: "Error interno. Intenta nuevamente." };
   }
 
-  return { success: true, url: flowResult.url };
+  // Flow returns { token, url } separately — the checkout URL only works
+  // when the token is appended as a query param. Without it the hosted
+  // checkout shows "Error Processing Request" because it cannot resolve
+  // which payment to process.
+  const checkoutUrl = `${flowResult.url}?token=${encodeURIComponent(flowResult.token)}`;
+  return { success: true, url: checkoutUrl };
 }
