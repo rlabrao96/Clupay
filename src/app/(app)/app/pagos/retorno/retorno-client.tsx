@@ -24,14 +24,18 @@ export function ReturnClient({ token, paymentId }: Props) {
     async function pollOnce() {
       if (cancelled) return;
 
-      // Build query: prefer token (real Flow flow), fall back to paymentId (mock flow)
+      // Build query: prefer token (real Flow flow), fall back to paymentId
+      // (mock flow or server-derived recent payment).
       let query = supabase.from("payments").select("status");
       if (token) {
         query = query.eq("flow_transaction_id", token);
       } else if (paymentId) {
         query = query.eq("id", paymentId);
       } else {
-        setPhase("failed");
+        // No identifier available — land on the timeout screen instead of
+        // claiming rejection. The webhook is still the source of truth and
+        // will email the parent when confirmed.
+        setPhase("timeout");
         return;
       }
       const { data } = await query.maybeSingle();
