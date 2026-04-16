@@ -72,18 +72,17 @@ export function createFlowClient(): FlowClient {
   const apiKey = requireEnv("FLOW_API_KEY");
   const secretKey = requireEnv("FLOW_SECRET_KEY");
 
-  async function postSigned<T>(
+  function signedRequest(
     path: string,
     params: Record<string, string>
-  ): Promise<T> {
+  ): { url: string; body: string } {
     const withKey = { ...params, apiKey };
     const s = signFlowParams(withKey, secretKey);
-    const body = new URLSearchParams({ ...withKey, s }).toString();
-    const res = await fetch(`${apiBase}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-    });
+    const query = new URLSearchParams({ ...withKey, s }).toString();
+    return { url: `${apiBase}${path}`, body: query };
+  }
+
+  async function handleResponse<T>(path: string, res: Response): Promise<T> {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Flow API ${path} returned ${res.status}: ${text}`);
@@ -102,11 +101,27 @@ export function createFlowClient(): FlowClient {
         urlReturn: input.urlReturn,
         currency: "CLP",
       };
-      return postSigned<FlowCreatePaymentResult>("/payment/create", params);
+      const { url, body } = signedRequest("/payment/create", params);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      return handleResponse<FlowCreatePaymentResult>("/payment/create", res);
     },
 
     async getPaymentStatus(token) {
-      return postSigned<FlowPaymentStatus>("/payment/getStatus", { token });
+      // Flow's /payment/getStatus expects GET with query params, not POST
+      // (verified against https://developers.flow.cl/api). POSTing returns
+      // code 105 "No services available".
+      const { url, body } = signedRequest("/payment/getStatus", { token });
+      const res = await fetch(`${url}?${body}`, { method: "GET" });
+      const raw = await handleResponse<
+        Omit<FlowPaymentStatus, "amount"> & { amount: number | string }
+      >("/payment/getStatus", res);
+      // Flow returns amount as a string ("1000") in the JSON response; coerce
+      // so downstream integer comparisons (amount mismatch check) work.
+      return { ...raw, amount: Number(raw.amount) };
     },
   };
 }

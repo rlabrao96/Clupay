@@ -151,7 +151,7 @@ describe("createFlowClient", () => {
       fetchSpy.mockRestore();
     });
 
-    it("getPaymentStatus POSTs to /payment/getStatus with token", async () => {
+    it("getPaymentStatus GETs /payment/getStatus with signed query params", async () => {
       const fetchSpy = jest
         .spyOn(globalThis, "fetch")
         .mockResolvedValue(
@@ -175,10 +175,15 @@ describe("createFlowClient", () => {
         expect(status.amount).toBe(10000);
         expect(status.commerceOrder).toBe("payment-xyz");
 
-        const body = fetchSpy.mock.calls[0][1]?.body as string;
-        expect(body).toContain("apiKey=test_api_key");
-        expect(body).toContain("token=tok_123");
-        expect(body).toMatch(/&s=[0-9a-f]{64}$/);
+        // Flow requires GET with query params for /payment/getStatus
+        const [url, init] = fetchSpy.mock.calls[0];
+        expect(init?.method).toBe("GET");
+        expect(String(url)).toContain(
+          "https://www.flow.cl/api/payment/getStatus?"
+        );
+        expect(String(url)).toContain("apiKey=test_api_key");
+        expect(String(url)).toContain("token=tok_123");
+        expect(String(url)).toMatch(/&s=[0-9a-f]{64}$/);
       });
 
       fetchSpy.mockRestore();
