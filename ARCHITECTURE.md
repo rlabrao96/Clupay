@@ -15,11 +15,15 @@ CluPay is a single Next.js 16 application serving three portals via route groups
 │  ┌──────────────────────────────────────────────┐│
 │  │  Server Actions (src/lib/actions/)           ││
 │  │  approve-invoice, mark-invoice-paid,         ││
-│  │  send-invitation                             ││
+│  │  send-invitation, create-flow-payment        ││
 │  └──────────────────────────────────────────────┘│
 │  ┌──────────────────────────────────────────────┐│
 │  │  Vercel Cron (daily 4 AM UTC)                ││
 │  │  Invoice generation + email notifications    ││
+│  └──────────────────────────────────────────────┘│
+│  ┌──────────────────────────────────────────────┐│
+│  │  Flow Webhook (/api/webhooks/flow/confirm)   ││
+│  │  Authoritative payment confirmation          ││
 │  └──────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────┤
 │              Supabase                            │
@@ -61,7 +65,25 @@ Server-side mutations that handle DB operations + email sending:
 - `send-invitation.ts` — Insert invitation + send invitation email
 - `delete-invitation.ts` — Delete invitation record
 - `approve-invoice.ts` — Approve invoice(s) + send invoice-ready email (single and bulk)
-- `mark-invoice-paid.ts` — Call `mark_invoice_paid` RPC + send payment confirmation email
+- `mark-invoice-paid.ts` — Call `mark_invoice_paid` RPC + send payment confirmation email (admin-initiated path)
+- `create-flow-payment.ts` — Validate parent ownership, dedupe recent pending payments, pre-insert a `payments` row, call Flow's `payment/create`, store the returned token, and return the checkout URL with `?token=` appended. Uses the service role client for payments-table writes (parents only have SELECT via RLS)
+
+### Flow Integration (`src/lib/flow/`)
+
+- `signature.ts` — Pure HMAC-SHA256 signing helper. Sorts params alphabetically, concatenates as `k=v&k=v`, HMACs with the merchant secret, returns lowercase hex.
+- `client.ts` — Flow HTTP client exposing `createPayment()` (POST `/payment/create` form-urlencoded) and `getPaymentStatus()` (GET `/payment/getStatus` with signed query string — NOT POST; Flow returns code 105 otherwise). Coerces the string `amount` field in status responses to a number. Mock mode returns synthetic tokens + a local return URL when `FLOW_MOCK=true`, and throws at construction if `FLOW_MOCK=true && VERCEL_ENV=production`.
+- `confirm-payment.ts` — Shared idempotent confirmation logic. Looks up the payment, short-circuits on `status='completed'`, verifies Flow-reported amount against stored amount, branches on Flow status codes (1 pending, 2 paid, 3 rejected, 4 cancelled), updates `payments` + `invoices` directly (bypasses the `mark_invoice_paid` RPC because that RPC would insert a duplicate payments row), and sends the payment-confirmation email. Email send failures are logged but do not roll back the payment.
+
+### Flow Webhook (`src/app/api/webhooks/flow/confirm/route.ts`)
+
+POST-only route that Flow calls server-to-server after each payment attempt. Reads the `token` from the form body, round-trips to `payment/getStatus` to authenticate (the token is meaningless without our secret key), looks up the payments row by `flow_transaction_id`, and delegates to `confirmPayment`. Always returns 200 for processed outcomes (including already-confirmed, amount mismatch, unknown token) so Flow stops retrying; returns 500 only for transient errors (Flow API down, DB update failed) so Flow retries.
+
+### Parent Payment UI
+
+- `src/components/app/pay-now-button.tsx` — Client component. Calls `createFlowPayment` via `useTransition`, disables the button while the action is in flight, redirects to the Flow checkout on success, shows an inline error on failure.
+- `src/app/(app)/app/pagos/retorno/page.tsx` — Server component that lands the parent after the Flow checkout. Derives the target payment from the authenticated user's most recent payment with a Flow transaction id when Flow does not append `?token=` to the return URL.
+- `src/app/(app)/app/pagos/retorno/retorno-client.tsx` — Polls `payments.status` every 2 seconds for up to 30 seconds. Renders success / rejected / timeout states. When no identifier is available it lands on the neutral "timeout" screen rather than claiming rejection — the webhook is the authoritative confirmation path.
+- `src/app/(app)/app/pagos/retorno/mock/route.ts` — Mock-mode-only GET route. Guarded by `FLOW_MOCK==='true'` and `VERCEL_ENV!=='production'`. Calls `confirmPayment` directly with status=2 to simulate a successful payment, then redirects to the real return page.
 
 ### Email System (`src/lib/email/`)
 
@@ -159,6 +181,23 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 2. Clicks "Aprobar" (single) or "Aprobar todos" (bulk) → server action updates status to `pending` + sends email to parent(s)
 3. Club admin marks invoice as paid → server action calls `mark_invoice_paid` RPC + sends payment confirmation email
 
+### Parent Online Payment Flow (Flow.cl)
+1. Parent clicks **Pagar Ahora** on `/app`. Client component calls `createFlowPayment(invoiceId)` via `useTransition`.
+2. Server action authenticates the parent, verifies invoice ownership and payable status, rejects if a pending Flow payment exists for this invoice in the last 30 minutes (dedupe).
+3. Server action pre-inserts a `payments` row (`status='pending'`, `method='card_link'`) via the service role client.
+4. Server action calls Flow `/payment/create` with a signed body → receives `{ token, url, flowOrder }` → stores the token on the payments row → returns `${url}?token=${token}` to the client.
+5. Client redirects the browser to the Flow hosted checkout.
+6. Parent pays with Webpay Plus (or other enabled method). Flow:
+   - **Server-to-server:** POSTs our `/api/webhooks/flow/confirm` with the token (authoritative path)
+   - **Browser:** redirects to `/app/pagos/retorno` (Flow does NOT reliably append `?token=`; the server page falls back to the parent's most recent payment)
+7. Webhook handler round-trips to `payment/getStatus`, authenticates the token, looks up the payments row, delegates to `confirmPayment`:
+   - **Flow status 2 (paid):** updates `payments` to `completed`, `invoices` to `paid`, sends payment-confirmation email
+   - **Flow status 3/4 (rejected/cancelled):** marks payments as `failed`, leaves invoice alone
+   - **Flow status 1 (pending):** no-op, Flow will webhook again
+8. Return page polls the DB every 2s for up to 30s, flips to the success/failed UI when the webhook lands, or shows "Te notificaremos por email" if it times out (the webhook still runs).
+
+Amounts are stored as integers (CLP). Flow returns `amount` as a string in the getStatus response — the client coerces it to a number before passing it to `confirmPayment`, so the amount-mismatch guard compares like with like.
+
 ## Authentication & Authorization
 
 - **Provider:** Supabase Auth (email + password, Google OAuth). Email confirmation disabled.
@@ -175,7 +214,7 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 
 - **Gmail SMTP** (via Nodemailer) — Transactional emails. Configured via `SMTP_USER` and `SMTP_PASS` env vars. 500 emails/day free tier.
 - **Supabase Storage** — Public `club-logos` bucket for club logo uploads. RLS policies allow authenticated upload/update/delete, public read.
-- **Flow.cl** — Chilean payment processor. Parents pay invoices through Flow's hosted checkout. CluPay is the merchant of record; settlement to clubs happens externally. Configured via `FLOW_API_BASE`, `FLOW_API_KEY`, `FLOW_SECRET_KEY`. Local development uses `FLOW_MOCK=true` to skip real charges.
+- **Flow.cl** — Chilean payment processor. Parents pay invoices through Flow's hosted checkout with Webpay Plus as the primary method. CluPay is the merchant of record; settlement to clubs happens externally. Configured via `FLOW_API_BASE`, `FLOW_API_KEY`, `FLOW_SECRET_KEY`. Local development uses `FLOW_MOCK=true` to skip real charges (mock mode refuses to run if `VERCEL_ENV=production`). Authentication uses HMAC-SHA256 over alphabetically-sorted params. The webhook is the authoritative confirmation path; the browser return page is UX-only and reads from our DB, not Flow. Validated in production with a real CLP transaction end-to-end (payment → webhook → DB → email).
 
 ## Infrastructure & Deployment
 
@@ -183,7 +222,18 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 - **Database:** Supabase Cloud (São Paulo region)
 - **Migrations:** SQL files in `supabase/migrations/`, applied via Supabase CLI or MCP
 - **Cron:** Vercel Cron — daily at 4 AM UTC (`vercel.json`)
+- **Flow.cl webhook:** `POST /api/webhooks/flow/confirm` on the production domain. No Flow dashboard webhook config is required — the URL is sent as `urlConfirmation` with each `payment/create` call.
 - **No CI/CD pipeline** configured yet (no GitHub Actions)
+
+## HTTP Endpoints
+
+Non-page routes:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/cron/generate-invoices` | Daily cron — marks overdue, generates invoices, sends scheduled emails. Authenticated via `CRON_SECRET`. |
+| `POST` | `/api/webhooks/flow/confirm` | Flow.cl server-to-server webhook. Always returns 200 for processed outcomes, 500 only for transient failures. |
+| `GET` | `/app/pagos/retorno/mock` | Mock-mode only. Refuses to run unless `FLOW_MOCK=true` AND `VERCEL_ENV!=='production'`. |
 
 ## Frontend Architecture
 
@@ -205,3 +255,6 @@ All monetary amounts are stored as integers (CLP, no decimals). Percentages use 
 - **No ORM** — direct Supabase client queries. Keeps the stack simple and leverages Supabase's built-in type generation.
 - **Gmail SMTP over Resend** — Resend's free tier only sends to the account owner. Gmail SMTP sends to anyone for free (500/day), no custom domain needed.
 - **SECURITY DEFINER functions for RLS** — breaks circular policy dependencies (e.g., kids ↔ enrollments) without sacrificing security.
+- **Webhook is source of truth for Flow payments** — the browser return page is UX-only and reads from our DB. The webhook verifies Flow's notification by calling `payment/getStatus` with our secret key before trusting it, so an attacker who guesses or replays a token cannot confirm a payment. The authoritative payment state is only ever set via `confirmPayment`, which is idempotent on `flow_transaction_id`.
+- **Service role client for `payments` writes** — the `payments` table RLS grants parents only SELECT, so INSERT/UPDATE is done via the service role after ownership has been verified against `invoices` (parent-scoped RLS). This keeps RLS as the perimeter without moving payment logic out of the server action.
+- **Direct UPDATEs in `confirmPayment` instead of the `mark_invoice_paid` RPC** — that RPC inserts its own `payments` row, which would duplicate the row already pre-inserted by `createFlowPayment`. The direct UPDATE path is atomicity-light but matches the existing `mark-invoice-paid.ts` pattern; full transactional atomicity is tracked in NEXT-STEPS.

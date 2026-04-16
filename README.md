@@ -21,6 +21,9 @@ Plataforma de pagos y cobranzas para academias y clubes deportivos en Chile. Clu
 **Email:**
 - Nodemailer + Gmail SMTP (transactional emails: invitations, invoices, reminders, overdue alerts, payment confirmations)
 
+**Payments:**
+- Flow.cl — Chilean hosted-checkout payment processor. HMAC-SHA256 signed requests, server-to-server webhook for payment confirmation.
+
 **Auth:**
 - Supabase Auth (email + password, Google OAuth)
 
@@ -29,7 +32,7 @@ Plataforma de pagos y cobranzas para academias y clubes deportivos en Chile. Clu
 - Daily cron job via Vercel Cron (invoice generation + email notifications at 4 AM UTC)
 
 **Testing:**
-- Jest 30 with `next/jest` config
+- Jest 30 with `next/jest` config (49 tests, including 24 for the Flow integration)
 
 ## Getting Started
 
@@ -108,37 +111,43 @@ npm test
 ```
 src/
 ├── app/
-│   ├── (admin)/          # Super Admin portal (desktop)
-│   ├── (club)/           # Club Admin portal (desktop-first)
-│   ├── (app)/            # Parent portal (mobile-first PWA)
-│   ├── (auth)/           # Shared auth pages (login, register, callback)
-│   ├── api/cron/         # Vercel Cron endpoint (invoice generation + notifications)
-│   ├── invite/[token]/   # Invitation acceptance page
-│   └── page.tsx          # Root redirect by role
+│   ├── (admin)/                          # Super Admin portal (desktop)
+│   ├── (club)/                           # Club Admin portal (desktop-first)
+│   ├── (app)/                            # Parent portal (mobile-first PWA)
+│   │   └── app/pagos/retorno/            # Flow checkout return page + mock route
+│   ├── (auth)/                           # Shared auth pages (login, register, callback)
+│   ├── api/
+│   │   ├── cron/                         # Vercel Cron endpoint (invoice generation + notifications)
+│   │   └── webhooks/flow/confirm/        # Flow.cl server-to-server webhook
+│   ├── invite/[token]/                   # Invitation acceptance page
+│   └── page.tsx                          # Root redirect by role
 ├── components/
-│   ├── shared/           # AuthGuard, LogoutButton, RutInput, Providers
-│   ├── admin/            # ClubForm, ClubAdminManager
-│   ├── club/             # SportForm, PlanForm, InvoiceTable, MarkPaidButton, DeleteInvitationButton, etc.
-│   ├── app/              # KidForm, ProfileForm
-│   └── invite/           # EnrollmentForm (invitation acceptance)
+│   ├── shared/                           # AuthGuard, LogoutButton, RutInput, Providers
+│   ├── admin/                            # ClubForm, ClubAdminManager
+│   ├── club/                             # SportForm, PlanForm, InvoiceTable, MarkPaidButton, etc.
+│   ├── app/                              # KidForm, ProfileForm, PayNowButton
+│   └── invite/                           # EnrollmentForm (invitation acceptance)
 ├── lib/
-│   ├── actions/          # Server actions (send-invitation, delete-invitation, approve-invoice, mark-invoice-paid)
-│   ├── email/            # Email client (Nodemailer), templates, notification sender
-│   ├── supabase/         # Client, server, service role, and middleware helpers
-│   ├── rut/              # Chilean RUT validation (modulo 11)
-│   ├── format.ts         # CLP currency, date, percent formatters
-│   ├── club.ts           # Club ID resolution for club admins
-│   ├── invoice-generation.ts  # Monthly invoice generation engine
-│   └── notification-cron.ts   # Email notification scheduling (reminders, overdue alerts)
+│   ├── actions/                          # Server actions (invitations, invoice approval, mark paid, create-flow-payment)
+│   ├── email/                            # Email client (Nodemailer), templates, notification sender
+│   ├── flow/                             # Flow.cl: signature, HTTP client, shared confirmation logic
+│   ├── supabase/                         # Client, server, service role, and middleware helpers
+│   ├── rut/                              # Chilean RUT validation (modulo 11)
+│   ├── format.ts                         # CLP currency, date, percent formatters
+│   ├── club.ts                           # Club ID resolution for club admins
+│   ├── invoice-generation.ts             # Monthly invoice generation engine
+│   └── notification-cron.ts              # Email notification scheduling (reminders, overdue alerts)
 └── types/
-    └── index.ts          # All TypeScript interfaces and type aliases
+    └── index.ts                          # All TypeScript interfaces and type aliases
 supabase/
-├── migrations/           # 28 SQL migration files
-└── seed.sql              # Test data
+├── migrations/                           # 28 SQL migration files
+└── seed.sql                              # Test data
 __tests__/
+├── app/api/webhooks/flow/                # Webhook handler tests
 └── lib/
-    ├── rut/              # RUT validation tests
-    └── email/            # Email template and notification sender tests
+    ├── flow/                             # Signature, client, confirm-payment tests
+    ├── rut/                              # RUT validation tests
+    └── email/                            # Email template and notification sender tests
 ```
 
 ## What CluPay Does
@@ -165,11 +174,21 @@ Daily Vercel Cron job (`POST /api/cron/generate-invoices`) at 4 AM UTC:
 Transactional emails via Nodemailer + Gmail SMTP:
 - **Invitation email** — when club admin sends invitation, parent receives link to `/invite/{token}`
 - **Invoice ready** — when invoice is approved (manual or auto), parent is notified
-- **Payment confirmation** — when club admin marks invoice as paid
+- **Payment confirmation** — when club admin marks invoice as paid, or when Flow webhook confirms a successful payment
 - **Payment reminder** — 3 days before due date (via daily cron)
 - **Overdue alerts** — 1, 3, 7 days after due date (via daily cron)
 
 All emails are logged to the `notifications` table for audit and deduplication.
+
+### Online Payments via Flow.cl
+
+Parents pay invoices through Flow's hosted checkout:
+1. Parent clicks **Pagar Ahora** on the dashboard — a server action pre-inserts a `payments` row and calls Flow's `payment/create` with a signed request, returning a checkout URL + token.
+2. Browser redirects to Flow's hosted checkout where the parent pays with Webpay Plus, Onepay, Khipu, etc.
+3. Flow POSTs our webhook at `/api/webhooks/flow/confirm`. The handler round-trips back to Flow via `payment/getStatus` to authenticate the token, then marks the payment as completed, the invoice as paid, and sends the payment-confirmation email. The webhook is the authoritative source of truth.
+4. The parent's browser is redirected to `/app/pagos/retorno`, which polls the DB until it sees the webhook-confirmed status.
+
+Local development uses `FLOW_MOCK=true` to short-circuit Flow calls and auto-confirm via a local mock route — the client throws at construction time if `FLOW_MOCK=true` and `VERCEL_ENV=production` so mock mode can never leak to production.
 
 ### Invitation & Enrollment Flow
 
