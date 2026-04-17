@@ -4,7 +4,13 @@ export type EnrollmentStatus = "active" | "paused" | "cancelled";
 
 export type InvoiceStatus = "generated" | "pending" | "paid" | "overdue";
 
-export type PaymentMethod = "card_automatic" | "card_link" | "bank_transfer";
+export type PaymentMethod =
+  | "card_automatic"
+  | "card_link"
+  | "bank_transfer"
+  | "flow_transfer"
+  | "flow_wallet"
+  | "flow_installments";
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
@@ -47,6 +53,17 @@ export interface Club {
   platform_fee_percent: number;
   due_day: number;
   auto_approve_invoices: boolean;
+  pm_card: boolean;
+  pm_flow_transfer: boolean;
+  pm_wallet: boolean;
+  pm_installments: boolean;
+  pm_direct_transfer: boolean;
+  bank_holder_name: string | null;
+  bank_holder_rut: string | null;
+  bank_name: string | null;
+  bank_account_type: "corriente" | "vista" | "ahorro" | null;
+  bank_account_number: string | null;
+  bank_notification_email: string | null;
   created_at: string;
   updated_at: string;
 }
