@@ -7,6 +7,7 @@ export interface FlowCreatePaymentInput {
   email: string;
   urlConfirmation: string;
   urlReturn: string;
+  paymentMethod?: number;
 }
 
 export interface FlowCreatePaymentResult {
@@ -101,6 +102,9 @@ export function createFlowClient(): FlowClient {
         urlReturn: input.urlReturn,
         currency: "CLP",
       };
+      if (input.paymentMethod !== undefined) {
+        params.paymentMethod = String(input.paymentMethod);
+      }
       const { url, body } = signedRequest("/payment/create", params);
       const res = await fetch(url, {
         method: "POST",

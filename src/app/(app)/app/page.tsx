@@ -24,7 +24,7 @@ export default async function AppHomePage() {
       .single(),
     supabase
       .from("invoices")
-      .select("*, clubs:club_id(name)")
+      .select("*, clubs:club_id(*)")
       .eq("parent_id", user.id)
       .in("status", ["overdue", "pending", "generated"])
       .order("due_date"),
@@ -79,7 +79,10 @@ export default async function AppHomePage() {
           </p>
           <p className="text-3xl font-bold text-text mb-1">{formatCLP(nextInvoice.total)}</p>
           <p className="text-sm text-text-secondary mb-4">Vence: {formatDate(nextInvoice.due_date)}</p>
-          <PayNowButton invoiceId={nextInvoice.id} />
+          <PayNowButton
+            invoiceId={nextInvoice.id}
+            club={nextInvoice.clubs as unknown as import("@/types").Club}
+          />
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
