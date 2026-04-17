@@ -125,6 +125,65 @@ describe("createFlowClient", () => {
       fetchSpy.mockRestore();
     });
 
+    it("createPayment includes paymentMethod in body when provided", async () => {
+      const fetchSpy = jest
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ token: "t", url: "https://flow.cl/pay", flowOrder: 1 }),
+            { status: 200 }
+          )
+        );
+
+      await withEnv({ ...baseEnv, FLOW_MOCK: undefined }, async () => {
+        const client = createFlowClient();
+        await client.createPayment({
+          commerceOrder: "p-1",
+          subject: "s",
+          amount: 1000,
+          email: "a@b.cl",
+          urlConfirmation: "u",
+          urlReturn: "u",
+          paymentMethod: 22,
+        });
+
+        const body = fetchSpy.mock.calls[0][1]?.body as string;
+        expect(body).toContain("paymentMethod=22");
+        // Signature must still be valid — the signed payload must include paymentMethod
+        expect(body).toMatch(/&s=[0-9a-f]{64}$/);
+      });
+
+      fetchSpy.mockRestore();
+    });
+
+    it("createPayment omits paymentMethod from body when not provided", async () => {
+      const fetchSpy = jest
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ token: "t", url: "https://flow.cl/pay", flowOrder: 1 }),
+            { status: 200 }
+          )
+        );
+
+      await withEnv({ ...baseEnv, FLOW_MOCK: undefined }, async () => {
+        const client = createFlowClient();
+        await client.createPayment({
+          commerceOrder: "p-1",
+          subject: "s",
+          amount: 1000,
+          email: "a@b.cl",
+          urlConfirmation: "u",
+          urlReturn: "u",
+        });
+
+        const body = fetchSpy.mock.calls[0][1]?.body as string;
+        expect(body).not.toContain("paymentMethod=");
+      });
+
+      fetchSpy.mockRestore();
+    });
+
     it("createPayment throws on non-2xx response", async () => {
       const fetchSpy = jest
         .spyOn(globalThis, "fetch")
