@@ -1,6 +1,6 @@
 # Next Steps
 
-_Last updated: 2026-04-16_
+_Last updated: 2026-04-17_
 
 ## In Progress
 
@@ -10,9 +10,11 @@ No items currently in progress.
 
 ### Phase 2 — Money Flows
 
-- **Flow.cl recurring subscriptions** — Card-on-file and auto-charge on the club billing day. One-time Flow payments via the "Pagar Ahora" button are live and validated end-to-end in production.
+- **Flow.cl cargo automático / recurring charges** — Pending Flow authorization. Once granted: `customer/register` stores a `flow_customer_id` on `profiles` (or a new `parent_payment_methods` table) so the cron can call `customer/charge` for each auto-approved invoice. Design draft in `docs/superpowers/specs/2026-04-17-payment-method-config-design.md` (explicitly deferred as a separate initiative).
+- **Flow.cl subscriptions (server-side plans)** — Alternative to cargo automático for fixed recurring amounts. Evaluated during the payment-method-config brainstorm and rejected as inferior because our invoice engine already handles variable amounts, discounts, and manual approvals; keep on the radar if requirements change.
+- **Webpay cuotas sin interés sub-toggle** — When the merchant activates Flow IDs 130/131/132, add a sub-toggle inside the `card` category so each club can opt in/out of the extra surcharge. IDs are currently inactive in the Flow account.
 - **Flow.cl refunds** — Refund API integration. Refunds are currently handled manually through the Flow dashboard.
-- **Bank transfer tracking** — Parents mark a transfer as "I paid" with a reference number, club admin confirms. Orthogonal to Flow.
+- **Direct bank transfer — proof upload / "ya transferí" tracking** — Intentionally deferred during brainstorm. Revisit only if admins request a richer flow; today parents see the bank data and the admin marks the invoice paid manually.
 - **PDF generation** — Invoice PDFs (before payment) and receipt PDFs (after payment) using `@react-pdf/renderer`. Store in Supabase Storage. Show download links on the parent payment history page (`pdf_url` and `receipt_pdf_url` fields exist in the schema but are unused).
 - **Platform billing automation** — Auto-populate `platform_billing` table when invoices are paid (including Flow-settled payments, not just manual mark-paid), calculating fixed fee + commission per club per period. Currently the table exists but is not populated.
 
@@ -32,13 +34,14 @@ No items currently in progress.
 
 - **Athlete detail view** — Spec calls for click-to-detail on athletes page with parent info, payment history, and discount assignment. Currently a flat listing.
 - **Athlete filtering** — Spec calls for filterable table by sport/status on the athletes page.
-- **Payment methods in parent profile** — Spec calls for managing payment methods (cards). Not implemented.
+- **Payment methods in parent profile** — Spec calls for managing registered cards (saved card-on-file). Blocked on Flow cargo-automático authorization — the `customer/register` flow will populate this surface.
 - **Notification preferences in parent profile** — Spec calls for notification settings. Not implemented.
 - **Reward messages** — On-time payment streak detection and congratulatory messages. Not implemented.
 
 ## Known Issues
 
-- **Pre-existing lint errors** — `npm run lint` reports ~22 pre-existing errors (mostly `any` types in server actions and components). Not introduced by recent work; matches the convention used in `mark-invoice-paid.ts` and `approve-invoice.ts`. Should be cleaned up alongside a stricter ESLint config in CI.
+- **Pre-existing lint errors** — `npm run lint` reports ~43 errors + 9 warnings, mostly `any` types in server actions and components. Matches the convention used in `mark-invoice-paid.ts` and `approve-invoice.ts`. Should be cleaned up alongside a stricter ESLint config in CI.
+- **Pre-existing `tsc --noEmit` gap in `__tests__/`** — Running `npx tsc --noEmit` against the whole repo surfaces ~227 errors inside `__tests__/` because `@types/jest` is not installed. Jest itself runs fine (ts-jest compiles tests independently). Adding `@types/jest` as a devDependency would make `tsc --noEmit` a clean gate across the whole tree.
 
 ## Infrastructure TODOs
 

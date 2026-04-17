@@ -32,7 +32,7 @@ Plataforma de pagos y cobranzas para academias y clubes deportivos en Chile. Clu
 - Daily cron job via Vercel Cron (invoice generation + email notifications at 4 AM UTC)
 
 **Testing:**
-- Jest 30 with `next/jest` config (49 tests, including 24 for the Flow integration)
+- Jest 30 with `next/jest` config (66 tests, including 24 for the Flow integration and 17 for the per-club payment-method configuration)
 
 ## Getting Started
 
@@ -76,7 +76,7 @@ cp .env.example .env.local
 
 ### Database Setup
 
-Run migrations against your Supabase project. Migrations are in `supabase/migrations/` (28 files, `00001` through `00031`).
+Run migrations against your Supabase project. Migrations are in `supabase/migrations/` (29 files, `00001` through `00032`).
 
 To seed test data with sample accounts:
 
@@ -114,7 +114,10 @@ src/
 │   ├── (admin)/                          # Super Admin portal (desktop)
 │   ├── (club)/                           # Club Admin portal (desktop-first)
 │   ├── (app)/                            # Parent portal (mobile-first PWA)
-│   │   └── app/pagos/retorno/            # Flow checkout return page + mock route
+│   │   └── app/pagos/
+│   │       ├── retorno/                  # Flow checkout return page + mock route
+│   │       ├── metodo/[invoiceId]/       # Payment method selector (shown when 2+ methods enabled)
+│   │       └── transferencia/[invoiceId]/ # Direct bank transfer page (club's account details)
 │   ├── (auth)/                           # Shared auth pages (login, register, callback)
 │   ├── api/
 │   │   ├── cron/                         # Vercel Cron endpoint (invoice generation + notifications)
@@ -124,29 +127,33 @@ src/
 ├── components/
 │   ├── shared/                           # AuthGuard, LogoutButton, RutInput, Providers
 │   ├── admin/                            # ClubForm, ClubAdminManager
-│   ├── club/                             # SportForm, PlanForm, InvoiceTable, MarkPaidButton, etc.
+│   ├── club/                             # SportForm, PlanForm, InvoiceTable, MarkPaidButton, PaymentMethodsSection
 │   ├── app/                              # KidForm, ProfileForm, PayNowButton
 │   └── invite/                           # EnrollmentForm (invitation acceptance)
 ├── lib/
-│   ├── actions/                          # Server actions (invitations, invoice approval, mark paid, create-flow-payment)
+│   ├── actions/                          # Server actions (invitations, invoice approval, mark paid, create-flow-payment, update-club-payment-config)
 │   ├── email/                            # Email client (Nodemailer), templates, notification sender
 │   ├── flow/                             # Flow.cl: signature, HTTP client, shared confirmation logic
 │   ├── supabase/                         # Client, server, service role, and middleware helpers
 │   ├── rut/                              # Chilean RUT validation (modulo 11)
 │   ├── format.ts                         # CLP currency, date, percent formatters
+│   ├── banks.ts                          # Chilean banks + account type constants
 │   ├── club.ts                           # Club ID resolution for club admins
+│   ├── club-payments.ts                  # Enabled payment methods derivation + Flow ID mapping
 │   ├── invoice-generation.ts             # Monthly invoice generation engine
 │   └── notification-cron.ts              # Email notification scheduling (reminders, overdue alerts)
 └── types/
     └── index.ts                          # All TypeScript interfaces and type aliases
 supabase/
-├── migrations/                           # 28 SQL migration files
+├── migrations/                           # 29 SQL migration files
 └── seed.sql                              # Test data
 __tests__/
 ├── app/api/webhooks/flow/                # Webhook handler tests
 └── lib/
     ├── flow/                             # Signature, client, confirm-payment tests
+    ├── actions/                          # create-flow-payment, update-club-payment-config tests
     ├── rut/                              # RUT validation tests
+    ├── club-payments.test.ts             # Payment method helper tests
     └── email/                            # Email template and notification sender tests
 ```
 
@@ -156,7 +163,7 @@ __tests__/
 
 **Super Admin Portal** (`/admin`) — Platform-wide management for the CluPay team. Dashboard with KPIs (clubs, athletes, revenue, overdue invoices). CRUD for clubs with admin assignment and fee configuration. User listing across all roles. Platform billing/revenue tracking per club.
 
-**Club Admin Portal** (`/club`) — Club-scoped management for academy owners. Dashboard with club KPIs. Unified "Deportes y Planes" page with collapsible sport sections, inline plan management, enrollment counts, capacity limits, and estimated monthly revenue. Athletes grouped by kid with enrollment badges and monthly totals. Invoice management with expandable detail rows (click any row to see line items per kid/sport/plan). Invitation management with inline delete confirmation. Manage discounts per kid or parent. Club configuration (billing day, due day, auto-approve, logo upload via Supabase Storage).
+**Club Admin Portal** (`/club`) — Club-scoped management for academy owners. Dashboard with club KPIs. Unified "Deportes y Planes" page with collapsible sport sections, inline plan management, enrollment counts, capacity limits, and estimated monthly revenue. Athletes grouped by kid with enrollment badges and monthly totals. Invoice management with expandable detail rows (click any row to see line items per kid/sport/plan). Invitation management with inline delete confirmation. Manage discounts per kid or parent. Club configuration (billing day, due day, auto-approve, logo upload via Supabase Storage, payment methods offered to parents, and bank account details for direct transfer).
 
 **Parent Portal** (`/app`) — Mobile-first experience for parents. Dashboard showing next payment with status badge and "Pagar Ahora" button. Payment history with invoice cards. Kids listing with enrollment details per club/sport/plan. Add kid with RUT validation. Profile management.
 
@@ -180,15 +187,37 @@ Transactional emails via Nodemailer + Gmail SMTP:
 
 All emails are logged to the `notifications` table for audit and deduplication.
 
+### Payment Methods (Per-Club Configuration)
+
+Each club admin chooses which payment methods their parents see in `/club/configuracion`:
+
+- **Tarjeta (Webpay)** — card payments via Flow.
+- **Transferencia bancaria Flow (Khipu)** — instant online bank transfer reconciled by Flow.
+- **Billetera digital (MachBank / Onepay)** — mobile wallet apps.
+- **Cuotas sin tarjeta (banca.me)** — customer pays in installments, club receives the full amount upfront.
+- **Transferencia directa** — parent transfers to the club's bank account (outside Flow, manual reconciliation).
+
+At payment time, the parent portal routes based on how many methods are enabled:
+- 1 Flow method → straight to the Flow hosted checkout.
+- 1 method = direct transfer → a new page with the club's bank details and copy buttons.
+- 2+ methods → an intermediate selector page at `/app/pagos/metodo/[invoiceId]`.
+
+Defaults preserve current behavior: all 4 Flow toggles default ON; direct transfer defaults OFF until the club fills in its bank account form.
+
 ### Online Payments via Flow.cl
 
 Parents pay invoices through Flow's hosted checkout:
-1. Parent clicks **Pagar Ahora** on the dashboard — a server action pre-inserts a `payments` row and calls Flow's `payment/create` with a signed request, returning a checkout URL + token.
-2. Browser redirects to Flow's hosted checkout where the parent pays with Webpay Plus, Onepay, Khipu, etc.
-3. Flow POSTs our webhook at `/api/webhooks/flow/confirm`. The handler round-trips back to Flow via `payment/getStatus` to authenticate the token, then marks the payment as completed, the invoice as paid, and sends the payment-confirmation email. The webhook is the authoritative source of truth.
-4. The parent's browser is redirected to `/app/pagos/retorno`, which polls the DB until it sees the webhook-confirmed status.
+1. Parent clicks **Pagar Ahora** on the dashboard. If multiple methods are enabled they pick one first; otherwise the parent is routed directly.
+2. A server action verifies the chosen method is still enabled on the club, pre-inserts a `payments` row (with the real channel stored in `payments.method`), and calls Flow's `payment/create` with a signed request that includes the Flow `paymentMethod` ID, returning a checkout URL + token.
+3. Browser redirects to Flow's hosted checkout.
+4. Flow POSTs our webhook at `/api/webhooks/flow/confirm`. The handler round-trips back to Flow via `payment/getStatus` to authenticate the token, then marks the payment as completed, the invoice as paid, and sends the payment-confirmation email. The webhook is the authoritative source of truth.
+5. The parent's browser is redirected to `/app/pagos/retorno`, which polls the DB until it sees the webhook-confirmed status.
 
 Local development uses `FLOW_MOCK=true` to short-circuit Flow calls and auto-confirm via a local mock route — the client throws at construction time if `FLOW_MOCK=true` and `VERCEL_ENV=production` so mock mode can never leak to production.
+
+### Direct Bank Transfer (outside Flow)
+
+When a club enables "Transferencia directa", a parent who picks this option sees the club's bank data (titular, RUT, banco, tipo de cuenta, número de cuenta, optional notification email) with copy-to-clipboard buttons and an instruction to send the bank proof to the club. No `payments` row is created at this step. When the club admin receives the transfer, they mark the invoice as paid manually via `MarkPaidButton`, which creates the `payments` row with `method='bank_transfer'` and sends the payment-confirmation email.
 
 ### Invitation & Enrollment Flow
 
