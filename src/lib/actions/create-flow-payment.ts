@@ -3,6 +3,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { createFlowClient } from "@/lib/flow/client";
+import {
+  type FlowMethodKey,
+  PAYMENT_METHOD_FLOW_ID,
+  paymentMethodToEnum,
+} from "@/lib/club-payments";
 
 interface CreateFlowPaymentResult {
   success: boolean;
@@ -19,22 +24,21 @@ function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
+const CLUB_COLUMN_BY_KEY: Record<FlowMethodKey, string> = {
+  card: "pm_card",
+  flow_transfer: "pm_flow_transfer",
+  wallet: "pm_wallet",
+  installments: "pm_installments",
+};
+
 /**
- * Initiates a Flow.cl payment for an invoice. Called from the parent
- * portal "Pagar Ahora" button.
- *
- * Flow:
- * 1. Verify authenticated parent owns this invoice.
- * 2. Verify invoice is payable (pending or overdue).
- * 3. Dedupe: reject if a pending payment was created less than 30 min
- *    ago for the same invoice (prevents duplicate Flow checkouts).
- * 4. Pre-insert payments row with status=pending.
- * 5. Call Flow createPayment; on failure, mark payments row failed.
- * 6. Store Flow token in payments.flow_transaction_id.
- * 7. Return redirect URL to client.
+ * Initiates a Flow.cl payment for an invoice using a specific method key.
+ * The club must have the corresponding toggle enabled; otherwise we
+ * refuse before inserting any payments row.
  */
 export async function createFlowPayment(
-  invoiceId: string
+  invoiceId: string,
+  methodKey: FlowMethodKey
 ): Promise<CreateFlowPaymentResult> {
   const supabase = await createServerSupabaseClient();
 
@@ -43,31 +47,38 @@ export async function createFlowPayment(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Sesión expirada" };
 
-  // Load invoice and validate ownership + status
   const { data: invoice, error: invErr } = await supabase
     .from("invoices")
     .select("id, parent_id, club_id, total, status, period_month, period_year, clubs(name)")
     .eq("id", invoiceId)
     .single();
 
-  if (invErr || !invoice) {
-    return { success: false, error: "Factura no encontrada" };
-  }
-  if (invoice.parent_id !== user.id) {
-    return { success: false, error: "No autorizado" };
-  }
+  if (invErr || !invoice) return { success: false, error: "Factura no encontrada" };
+  if (invoice.parent_id !== user.id) return { success: false, error: "No autorizado" };
   if (invoice.status !== "pending" && invoice.status !== "overdue") {
     return { success: false, error: "Esta factura no se puede pagar" };
   }
 
-  // All payments-table operations below use the service role client to
-  // bypass RLS: the parents_payments_* policies only grant SELECT to the
-  // invoice owner, not INSERT/UPDATE. Ownership was already validated
-  // above against the invoices table (parent-scoped RLS), so delegating
-  // the writes to the service role is safe.
+  // Verify the method is still enabled on the club (race-safe)
+  const { data: club, error: clubErr } = await supabase
+    .from("clubs")
+    .select("pm_card, pm_flow_transfer, pm_wallet, pm_installments")
+    .eq("id", invoice.club_id)
+    .single();
+
+  if (clubErr || !club) return { success: false, error: "Club no encontrado" };
+
+  const column = CLUB_COLUMN_BY_KEY[methodKey] as
+    | "pm_card"
+    | "pm_flow_transfer"
+    | "pm_wallet"
+    | "pm_installments";
+  if (!club[column]) {
+    return { success: false, error: "Método no disponible" };
+  }
+
   const serviceClient = createServiceRoleClient();
 
-  // Dedupe: any recent pending payment for this invoice?
   const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
   const { data: recent } = await serviceClient
     .from("payments")
@@ -85,37 +96,30 @@ export async function createFlowPayment(
     };
   }
 
-  // Fetch parent email for the Flow checkout
   const { data: profile } = await serviceClient
     .from("profiles")
     .select("email")
     .eq("id", user.id)
     .single();
-
   const parentEmail = profile?.email;
-  if (!parentEmail) {
-    return { success: false, error: "No tenemos tu email en el sistema" };
-  }
+  if (!parentEmail) return { success: false, error: "No tenemos tu email en el sistema" };
 
-  // Pre-insert payments row
   const { data: payment, error: insertErr } = await serviceClient
     .from("payments")
     .insert({
       invoice_id: invoiceId,
       amount: invoice.total,
-      method: "card_link",
+      method: paymentMethodToEnum(methodKey),
       status: "pending",
     })
     .select("id")
     .single();
-
   if (insertErr || !payment) {
     console.error("[createFlowPayment] pre-insert failed", insertErr);
     return { success: false, error: "No pudimos iniciar el pago" };
   }
 
-  // Call Flow
-  const clubName = (invoice.clubs as any)?.name ?? "CluPay";
+  const clubName = (invoice.clubs as unknown as { name: string } | null)?.name ?? "CluPay";
   const periodLabel = `${MONTH_NAMES[invoice.period_month - 1]} ${invoice.period_year}`;
   const subject = `CluPay - ${clubName} - ${periodLabel}`;
 
@@ -129,40 +133,24 @@ export async function createFlowPayment(
       email: parentEmail,
       urlConfirmation: `${appUrl()}/api/webhooks/flow/confirm`,
       urlReturn: `${appUrl()}/app/pagos/retorno`,
+      paymentMethod: PAYMENT_METHOD_FLOW_ID[methodKey],
     });
   } catch (err) {
     console.error("[createFlowPayment] Flow createPayment failed", err);
-    // Mark row failed so it does not block dedupe
-    await serviceClient
-      .from("payments")
-      .update({ status: "failed" })
-      .eq("id", payment.id);
+    await serviceClient.from("payments").update({ status: "failed" }).eq("id", payment.id);
     return { success: false, error: "No pudimos conectar con Flow. Intenta nuevamente." };
   }
 
-  // Store token on the payments row
   const { error: updateErr } = await serviceClient
     .from("payments")
     .update({ flow_transaction_id: flowResult.token })
     .eq("id", payment.id);
-
   if (updateErr) {
     console.error("[createFlowPayment] token update failed", updateErr);
-    // The payment was created at Flow, but we could not store the token.
-    // This is recoverable via the webhook (Flow will POST the token, we
-    // look it up by... we can't, without the token stored). Safer to
-    // mark failed and let the parent retry.
-    await serviceClient
-      .from("payments")
-      .update({ status: "failed" })
-      .eq("id", payment.id);
+    await serviceClient.from("payments").update({ status: "failed" }).eq("id", payment.id);
     return { success: false, error: "Error interno. Intenta nuevamente." };
   }
 
-  // Flow returns { token, url } separately — the checkout URL only works
-  // when the token is appended as a query param. Without it the hosted
-  // checkout shows "Error Processing Request" because it cannot resolve
-  // which payment to process.
   const checkoutUrl = `${flowResult.url}?token=${encodeURIComponent(flowResult.token)}`;
   return { success: true, url: checkoutUrl };
 }
