@@ -48,3 +48,11 @@ export function formatRut(rut: string): string {
 
   return `${formatted}-${digit}`;
 }
+
+export function canonicalRut(rut: string): string {
+  const cleaned = cleanRut(rut);
+  if (cleaned.length < 2) return cleaned;
+  const body = cleaned.slice(0, -1);
+  const digit = cleaned.slice(-1).toLowerCase();
+  return `${body}-${digit}`;
+}

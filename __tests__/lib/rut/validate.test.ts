@@ -1,4 +1,4 @@
-import { validateRut, formatRut, cleanRut } from "@/lib/rut/validate";
+import { validateRut, formatRut, cleanRut, canonicalRut } from "@/lib/rut/validate";
 
 describe("cleanRut", () => {
   it("removes dots and dashes", () => {
@@ -59,5 +59,20 @@ describe("formatRut", () => {
 
   it("handles already formatted input", () => {
     expect(formatRut("12.345.678-5")).toBe("12.345.678-5");
+  });
+});
+
+describe("canonicalRut", () => {
+  it("formats a numeric RUT as <body>-<digit>", () => {
+    expect(canonicalRut("12345678-5")).toBe("12345678-5");
+  });
+  it("strips dots and normalizes to body-digit", () => {
+    expect(canonicalRut("12.345.678-5")).toBe("12345678-5");
+  });
+  it("lowercases the K verifier", () => {
+    expect(canonicalRut("7.000.013-K")).toBe("7000013-k");
+  });
+  it("accepts input without separators", () => {
+    expect(canonicalRut("70000131")).toBe("7000013-1");
   });
 });
