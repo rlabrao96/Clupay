@@ -2,6 +2,20 @@ export type UserRole = "super_admin" | "club_admin" | "parent";
 
 export type EnrollmentStatus = "active" | "paused" | "cancelled";
 
+export type ImportBatchStatus = "pending" | "completed";
+
+export interface ImportBatch {
+  id: string;
+  club_id: string;
+  created_by: string | null;
+  status: ImportBatchStatus;
+  rows_total: number;
+  rows_imported: number;
+  rows_skipped: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
 export type InvoiceStatus = "generated" | "pending" | "paid" | "overdue";
 
 export type PaymentMethod =

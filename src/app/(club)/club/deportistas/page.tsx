@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getClubForUser } from "@/lib/club";
@@ -78,11 +79,19 @@ export default async function DeportistasPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-text mb-1">Deportistas</h1>
-        <p className="text-text-secondary">
-          {kids.length} {kids.length === 1 ? "deportista" : "deportistas"} · {totalEnrollments} {totalEnrollments === 1 ? "inscripción" : "inscripciones"}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text mb-1">Deportistas</h1>
+          <p className="text-text-secondary">
+            {kids.length} {kids.length === 1 ? "deportista" : "deportistas"} · {totalEnrollments} {totalEnrollments === 1 ? "inscripción" : "inscripciones"}
+          </p>
+        </div>
+        <Link
+          href="/club/deportistas/importar"
+          className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          Importar deportistas
+        </Link>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
