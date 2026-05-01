@@ -24,7 +24,7 @@ function vrow(over: Partial<ValidatedRow> = {}): ValidatedRow {
   };
 }
 
-function makeStubClient() {
+function makeStubClient(opts: { failProfilesInsert?: boolean } = {}) {
   const calls: { table: string; op: string; payload?: unknown }[] = [];
   const inserts: Record<string, { id: string; token?: string }> = {
     import_batches: { id: "batch-1" },
@@ -40,6 +40,7 @@ function makeStubClient() {
         data: { user: { id: "auth-new" } },
         error: null,
       })),
+      deleteUser: jest.fn(async () => ({ data: null, error: null })),
     },
   };
 
@@ -47,16 +48,28 @@ function makeStubClient() {
     return {
       insert: (payload: unknown) => {
         calls.push({ table, op: "insert", payload });
+
+        const shouldFail = opts.failProfilesInsert && table === "profiles";
+        const resolvedData = shouldFail ? null : inserts[table];
+        const resolvedError = shouldFail ? { message: "boom" } : null;
+
         return {
           select: () => ({
             single: () =>
-              Promise.resolve({ data: inserts[table], error: null }),
+              Promise.resolve({ data: resolvedData, error: resolvedError }),
           }),
           // also support insert without .select (e.g. import_batch_kids)
           then: undefined as unknown,
-          ...Promise.resolve({ data: inserts[table], error: null }),
+          ...Promise.resolve({ data: resolvedData, error: resolvedError }),
         };
       },
+      select: (_cols?: string) => ({
+        eq: (_col: string, _val: unknown) => ({
+          maybeSingle: () => Promise.resolve({ data: null, error: null }),
+          single: () =>
+            Promise.resolve({ data: inserts[table] ?? null, error: null }),
+        }),
+      }),
       upsert: (payload: unknown) => {
         calls.push({ table, op: "upsert", payload });
         return Promise.resolve({ error: null });
@@ -67,6 +80,9 @@ function makeStubClient() {
           eq: () => Promise.resolve({ error: null }),
         };
       },
+      delete: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
     };
   }
 
@@ -155,6 +171,21 @@ describe("commitImportBatchInternal", () => {
       sendInvitation: jest.fn(),
     });
     expect(calls.find((c) => c.table === "kids" && c.op === "insert")).toBeUndefined();
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(1);
+  });
+
+  it("rolls back the auth user when the profiles insert fails", async () => {
+    const { client, auth } = makeStubClient({ failProfilesInsert: true });
+    const result = await commitImportBatchInternal({
+      serviceClient: client,
+      clubId: "club-1",
+      adminProfileId: "admin-1",
+      rows: [vrow()],
+      sendInvitation: jest.fn(),
+    });
+    expect(auth.admin.createUser).toHaveBeenCalled();
+    expect(auth.admin.deleteUser).toHaveBeenCalledWith("auth-new");
     expect(result.imported).toBe(0);
     expect(result.skipped).toBe(1);
   });

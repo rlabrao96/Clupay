@@ -83,7 +83,7 @@ export async function commitImportBatchInternal({
   sendInvitation,
 }: InternalArgs): Promise<CommitResult> {
   // Create batch
-  const { data: batch } = await serviceClient
+  const { data: batch, error: batchErr } = await serviceClient
     .from("import_batches")
     .insert({
       club_id: clubId,
@@ -92,6 +92,9 @@ export async function commitImportBatchInternal({
     })
     .select("id")
     .single();
+  if (batchErr || !batch) {
+    throw new Error(`No se pudo crear el batch de importación: ${batchErr?.message ?? "desconocido"}`);
+  }
   const batchId = (batch as { id: string }).id;
 
   let imported = 0;
@@ -112,31 +115,59 @@ export async function commitImportBatchInternal({
           email: row.parent.email,
           email_confirm: false,
         });
-      if (authErr || !authRes?.user) {
-        skipped++;
-        continue;
-      }
-      const authUserId = authRes.user.id;
 
-      const { data: profile, error: profErr } = await serviceClient
-        .from("profiles")
-        .insert({
-          id: authUserId,
-          name: row.parent.name,
-          last_names: row.parent.last_names,
-          rut: row.parent.rut,
-          email: row.parent.email,
-          phone: row.parent.phone || null,
-          date_of_birth: row.parent.date_of_birth,
-          role: "parent",
-        })
-        .select("id")
-        .single();
-      if (profErr || !profile) {
+      if (authErr) {
+        const msg = (authErr.message ?? "").toLowerCase();
+        const isExisting =
+          /already.*registered|email.*exists|already.*been.*registered/.test(msg);
+        if (isExisting) {
+          // Look up the existing profile by email and treat as reuse_parent.
+          const { data: existingByEmail } = await serviceClient
+            .from("profiles")
+            .select("id")
+            .eq("email", row.parent.email)
+            .maybeSingle();
+          const existingId = (existingByEmail as { id: string } | null)?.id;
+          if (!existingId) {
+            skipped++;
+            continue;
+          }
+          parentProfileId = existingId;
+        } else {
+          skipped++;
+          continue;
+        }
+      } else if (!authRes?.user) {
         skipped++;
         continue;
+      } else {
+        const authUserId = authRes.user.id;
+        const { data: profile, error: profErr } = await serviceClient
+          .from("profiles")
+          .insert({
+            id: authUserId,
+            name: row.parent.name,
+            last_names: row.parent.last_names,
+            rut: row.parent.rut,
+            email: row.parent.email,
+            phone: row.parent.phone || null,
+            date_of_birth: row.parent.date_of_birth,
+            role: "parent",
+          })
+          .select("id")
+          .single();
+        if (profErr || !profile) {
+          // Rollback the dangling auth user so the parent can be re-imported.
+          try {
+            await serviceClient.auth.admin.deleteUser(authUserId);
+          } catch {
+            // best effort
+          }
+          skipped++;
+          continue;
+        }
+        parentProfileId = (profile as { id: string }).id;
       }
-      parentProfileId = (profile as { id: string }).id;
     }
 
     if (!parentProfileId) {
@@ -170,9 +201,19 @@ export async function commitImportBatchInternal({
     }
     const kidId = (kid as { id: string }).id;
 
-    await serviceClient
+    const { error: bkErr } = await serviceClient
       .from("import_batch_kids")
       .insert({ batch_id: batchId, kid_id: kidId });
+    if (bkErr) {
+      // Roll back the kid so it stays out of the system rather than orphaned.
+      try {
+        await serviceClient.from("kids").delete().eq("id", kidId);
+      } catch {
+        // best effort
+      }
+      skipped++;
+      continue;
+    }
 
     // 4) Invitation only for newly created parents
     if (row.status === "new") {
