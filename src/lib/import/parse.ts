@@ -50,7 +50,7 @@ export function parseImportFile(
   }
 
   return rows.map((r, i) => ({
-    rowNumber: i + 1,
+    rowNumber: i + 2,
     parent_name: String(r.parent_name ?? "").trim(),
     parent_last_names: String(r.parent_last_names ?? "").trim(),
     parent_rut: String(r.parent_rut ?? "").trim(),
@@ -61,7 +61,18 @@ export function parseImportFile(
     kid_last_names: String(r.kid_last_names ?? "").trim(),
     kid_rut: String(r.kid_rut ?? "").trim(),
     kid_date_of_birth: rawDateOrEmpty(r.kid_date_of_birth),
-  }));
+  })).filter((parsed) => {
+    const allBlank =
+      !parsed.parent_name &&
+      !parsed.parent_last_names &&
+      !parsed.parent_rut &&
+      !parsed.parent_email &&
+      !parsed.kid_name &&
+      !parsed.kid_last_names &&
+      !parsed.kid_rut &&
+      !parsed.kid_date_of_birth;
+    return !allBlank;
+  });
 }
 
 function rawDateOrEmpty(v: unknown): string | number | null {

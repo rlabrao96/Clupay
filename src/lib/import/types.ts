@@ -1,5 +1,5 @@
 export interface ParsedRow {
-  rowNumber: number; // 1-based, excluding header
+  rowNumber: number; // matches the row number the user sees in Excel (header is row 1, first data row is 2)
   parent_name: string;
   parent_last_names: string;
   parent_rut: string;
