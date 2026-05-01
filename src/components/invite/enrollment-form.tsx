@@ -91,11 +91,15 @@ export function EnrollmentForm({
       return;
     }
 
-    // On first enrollment: create club_parents association + mark invitation
-    if (enrollments.length === 0) {
+    // Invitation flow only: on first enrollment of the session, create the
+    // club_parents association and mark the invitation accepted. From
+    // /app/inscribir the parent is already associated, so we skip this
+    // entirely (an upsert there would attempt an UPDATE and fail RLS, since
+    // club_parents has no UPDATE policy for parents).
+    if (invitationToken && enrollments.length === 0) {
       const { error: cpError } = await supabase.from("club_parents").upsert(
         { club_id: clubId, parent_id: user.id },
-        { onConflict: "club_id,parent_id" }
+        { onConflict: "club_id,parent_id", ignoreDuplicates: true }
       );
       if (cpError) {
         setError(cpError.message);
@@ -103,16 +107,14 @@ export function EnrollmentForm({
         return;
       }
 
-      if (invitationToken) {
-        const { error: invError } = await supabase
-          .from("invitations")
-          .update({ status: "accepted", accepted_at: new Date().toISOString() })
-          .eq("token", invitationToken);
-        if (invError) {
-          setError(invError.message);
-          setSaving(false);
-          return;
-        }
+      const { error: invError } = await supabase
+        .from("invitations")
+        .update({ status: "accepted", accepted_at: new Date().toISOString() })
+        .eq("token", invitationToken);
+      if (invError) {
+        setError(invError.message);
+        setSaving(false);
+        return;
       }
     }
 
