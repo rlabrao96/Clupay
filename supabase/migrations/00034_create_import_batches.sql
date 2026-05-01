@@ -3,7 +3,7 @@ CREATE TYPE import_batch_status AS ENUM ('pending', 'completed');
 CREATE TABLE import_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
-  created_by UUID NOT NULL REFERENCES profiles(id),
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   status import_batch_status NOT NULL DEFAULT 'pending',
   rows_total INT NOT NULL DEFAULT 0,
   rows_imported INT NOT NULL DEFAULT 0,
